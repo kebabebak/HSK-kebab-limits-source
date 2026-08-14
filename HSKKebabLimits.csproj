@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <Configurations>Debug;Release;Release16</Configurations>
+    <RootNamespace>HSKKebabLimits</RootNamespace>
+    <AssemblyName>HSKKebabLimits</AssemblyName>
+    <OutputPath>out\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <DebugType>none</DebugType>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release16'">
+    <TargetFramework>net48</TargetFramework>
+    <KrafsRimworldRefVersion>1.6.*</KrafsRimworldRefVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' != 'Release16'">
+    <TargetFramework>net472</TargetFramework>
+    <KrafsRimworldRefVersion>1.5.*</KrafsRimworldRefVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Lib.Harmony" Version="2.3.3" ExcludeAssets="runtime" />
+    <PackageReference Include="Krafs.Rimworld.Ref" Version="$(KrafsRimworldRefVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="0MultiplayerAPI">
+      <HintPath>libs\0MultiplayerAPI.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

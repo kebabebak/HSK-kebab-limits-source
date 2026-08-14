@@ -1,0 +1,8 @@
+out/
+bin/
+obj/
+libs/*.dll
+*.ps1
+*.user
+*.suo
+.vs/
