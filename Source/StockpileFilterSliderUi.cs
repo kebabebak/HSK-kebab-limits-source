@@ -16,9 +16,6 @@ namespace HSKKebabLimits
     public static class StockpileFilterSliderUi
     {
         public static bool DrawingThingFilter;
-        public static bool DirectInputMode;
-        public static string DirectInputMode_Buffer_Low = "";
-        public static string DirectInputMode_Buffer_Upp = "";
 
         private static bool Prepare()
         {

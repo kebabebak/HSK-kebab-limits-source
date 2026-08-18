@@ -7,9 +7,9 @@ using Verse;
 namespace HSKKebabLimits
 {
     /// <summary>
-    /// Draws limit sliders, optional label numeric fields, and multistack controls for the active stockpile.
+    /// Draws limit sliders, hover-only min/max fields, and multistack controls for the active stockpile.
     ///
-    /// Рисует ползунки лимитов, опциональные числовые поля на подписи и элементы мультистака для активного склада.
+    /// Рисует ползунки лимитов, min/max поля только при наведении и элементы мультистака для активного склада.
     /// </summary>
     internal static class StockpileFilterSliderRow
     {
@@ -17,6 +17,11 @@ namespace HSKKebabLimits
         private const float SliderBandHeight = 16f;
         private const float RowHeight = LabelBandHeight + SliderBandHeight;
         private const float FieldGap = 6f;
+
+        private static StorageSettings directInputOwner;
+        private static string directInputBufferLow;
+        private static string directInputBufferUpp;
+        private static bool showingDirectInputFields;
 
         private static readonly FieldInfo RangeControlTextColorField =
             AccessTools.Field(typeof(Widgets), "RangeControlTextColor");
@@ -69,6 +74,8 @@ namespace HSKKebabLimits
                 ActiveStockpileTabContext.ActiveStorageSettings == null ||
                 ActiveStockpileTabContext.ActiveStorageSettings.owner is Building_Bookcase)
             {
+                ResetDirectInputState();
+                directInputOwner = null;
                 return;
             }
 
@@ -97,54 +104,66 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws the caption/fields in a band above the slider so Widgets.FloatRange cannot steal label clicks.
+        /// Drops typed min/max text and IMGUI focus so a later stockpile cannot reuse the previous editor.
         ///
-        /// Рисует подпись/поля в полосе над шкалой, чтобы Widgets.FloatRange не перехватывал клики по тексту.
+        /// Сбрасывает введённый min/max текст и IMGUI-фокус, чтобы следующий склад не подхватил предыдущий редактор.
+        /// </summary>
+        private static void ResetDirectInputState()
+        {
+            directInputBufferLow = null;
+            directInputBufferUpp = null;
+            if (showingDirectInputFields)
+            {
+                UI.UnfocusCurrentTextField();
+                showingDirectInputFields = false;
+            }
+        }
+
+        /// <summary>
+        /// Binds the numeric editor to this StorageSettings. Grouped stockpiles share one settings object.
+        ///
+        /// Привязывает числовой редактор к этим StorageSettings. Сгруппированные склады делят один объект настроек.
+        /// </summary>
+        private static void BindDirectInputTo(StorageSettings settings)
+        {
+            if (directInputOwner == settings)
+            {
+                return;
+            }
+
+            directInputOwner = settings;
+            ResetDirectInputState();
+        }
+
+        /// <summary>
+        /// Draws the caption or hover-only min/max fields above the slider, matching per-item limit editors.
+        ///
+        /// Рисует подпись или min/max поля только при наведении над шкалой, как у редакторов лимита предметов.
         /// </summary>
         private static void DrawSliderOrDirectInput(Rect row, ref FloatRange range)
         {
+            BindDirectInputTo(ActiveStockpileTabContext.ActiveStorageSettings);
+
             Rect labelBand = new Rect(row.x, row.y, row.width, LabelBandHeight);
             Rect sliderBand = new Rect(row.x, labelBand.yMax, row.width, SliderBandHeight);
             GetFieldRects(labelBand, out Rect lowRect, out Rect highRect);
 
-            bool overLabel = Mouse.IsOver(labelBand);
-            bool overFields = Mouse.IsOver(lowRect) || Mouse.IsOver(highRect);
-            bool pinned = StockpileFilterSliderUi.DirectInputMode;
-
-            if (Event.current.type == EventType.MouseDown && Event.current.button == 0)
+            bool hovering = Mouse.IsOver(row);
+            if (hovering)
             {
-                if (overFields)
-                {
-                    StockpileFilterSliderUi.DirectInputMode = true;
-                    pinned = true;
-                }
-                else if (pinned)
-                {
-                    // Any click outside the two fields collapses back to the caption.
-                    StockpileFilterSliderUi.DirectInputMode = false;
-                    pinned = false;
-                }
-            }
-
-            if (Event.current.type == EventType.KeyDown &&
-                (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.Escape))
-            {
-                StockpileFilterSliderUi.DirectInputMode = false;
-                pinned = false;
-                Event.current.Use();
-            }
-
-            pinned = StockpileFilterSliderUi.DirectInputMode;
-            bool showFields = pinned || overLabel || overFields;
-
-            if (showFields)
-            {
-                DrawLimitFields(labelBand, lowRect, highRect, pinned, ref range);
+                DrawLimitFields(lowRect, highRect, ref range);
+                showingDirectInputFields = true;
             }
             else
             {
-                StockpileFilterSliderUi.DirectInputMode_Buffer_Low = "";
-                StockpileFilterSliderUi.DirectInputMode_Buffer_Upp = "";
+                if (showingDirectInputFields)
+                {
+                    UI.UnfocusCurrentTextField();
+                    showingDirectInputFields = false;
+                }
+
+                directInputBufferLow = null;
+                directInputBufferUpp = null;
                 DrawLimitLabel(labelBand, range);
             }
 
@@ -179,47 +198,36 @@ namespace HSKKebabLimits
             Text.Font = previousFont;
         }
 
-        private static void DrawLimitFields(Rect labelBand, Rect lowRect, Rect highRect, bool pinned,
-            ref FloatRange range)
+        private static void DrawLimitFields(Rect lowRect, Rect highRect, ref FloatRange range)
         {
             int maxLimit = LogarithmicStackScale.MaxStackSize;
             int lowVal = LogarithmicStackScale.ToAbsoluteCount(range.min);
             int highVal = LogarithmicStackScale.ToAbsoluteCount(range.max);
 
-            if (!pinned)
+            if (directInputBufferLow.NullOrEmpty())
             {
-                StockpileFilterSliderUi.DirectInputMode_Buffer_Low = lowVal.ToString();
-                StockpileFilterSliderUi.DirectInputMode_Buffer_Upp = highVal.ToString();
+                directInputBufferLow = lowVal.ToString();
             }
-            else
-            {
-                if (StockpileFilterSliderUi.DirectInputMode_Buffer_Low.NullOrEmpty())
-                {
-                    StockpileFilterSliderUi.DirectInputMode_Buffer_Low = lowVal.ToString();
-                }
 
-                if (StockpileFilterSliderUi.DirectInputMode_Buffer_Upp.NullOrEmpty())
-                {
-                    StockpileFilterSliderUi.DirectInputMode_Buffer_Upp = highVal.ToString();
-                }
+            if (directInputBufferUpp.NullOrEmpty())
+            {
+                directInputBufferUpp = highVal.ToString();
             }
 
             int previousLow = lowVal;
             int previousHigh = highVal;
-            Widgets.TextFieldNumeric(lowRect, ref lowVal, ref StockpileFilterSliderUi.DirectInputMode_Buffer_Low, 0f,
-                maxLimit);
-            Widgets.TextFieldNumeric(highRect, ref highVal, ref StockpileFilterSliderUi.DirectInputMode_Buffer_Upp, 0f,
-                maxLimit);
+            Widgets.TextFieldNumeric(lowRect, ref lowVal, ref directInputBufferLow, 0f, maxLimit);
+            Widgets.TextFieldNumeric(highRect, ref highVal, ref directInputBufferUpp, 0f, maxLimit);
 
             lowVal = Mathf.Clamp(lowVal, 0, maxLimit);
             highVal = Mathf.Clamp(highVal, 0, maxLimit);
             if (highVal < lowVal)
             {
                 highVal = lowVal;
-                StockpileFilterSliderUi.DirectInputMode_Buffer_Upp = highVal.ToString();
+                directInputBufferUpp = highVal.ToString();
             }
 
-            if (pinned || lowVal != previousLow || highVal != previousHigh)
+            if (lowVal != previousLow || highVal != previousHigh)
             {
                 range.min = LogarithmicStackScale.ToNormalizedFraction(lowVal);
                 range.max = LogarithmicStackScale.ToNormalizedFraction(highVal);
