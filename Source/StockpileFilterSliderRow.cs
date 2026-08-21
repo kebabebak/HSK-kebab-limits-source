@@ -86,13 +86,15 @@ namespace HSKKebabLimits
             FloatRange range = profile.allowedLimitPercents;
             bool checkOn = profile.allowedMultistack;
             int similarStackCount = profile.SimilarStackCountRaw;
+            int filterDisplayMode = profile.FilterListDisplayMode;
             DrawSliderOrDirectInput(row, ref range);
             DrawMultistackCheckbox(perStorageMultistack, width, row, ref checkOn);
 
             y += RowHeight;
             y += 5f;
             StockpileFilterSimilarStackRow.Draw(ref y, width, perStorageMultistack, ref similarStackCount, ref checkOn);
-            CommitProfileChanges(profile, range, checkOn, similarStackCount);
+            StockpileFilterDisplayRow.Draw(ref y, width, ref filterDisplayMode);
+            CommitProfileChanges(profile, range, checkOn, similarStackCount, filterDisplayMode);
             Text.Font = GameFont.Small;
         }
 
@@ -255,19 +257,35 @@ namespace HSKKebabLimits
         }
 
         private static void CommitProfileChanges(StockpileLimitBundle profile, FloatRange range, bool checkOn,
-            int similarStackCount)
+            int similarStackCount, int filterDisplayMode)
         {
-            if (profile.allowedLimitPercents == range && profile.allowedMultistack == checkOn &&
-                profile.SimilarStackCountRaw == similarStackCount)
+            // Keep stored values when their editor is not drawn (global toggle off). Item rows hidden
+            // by show-allowed/forbidden stay on the profile and are not part of this commit.
+            // Сохранять значения, если их редактор не рисуется (глобальный тумблер выключен). Строки
+            // предметов, скрытые «только разрешённое/запрещённое», в профиле остаются и сюда не входят.
+            bool storeMultistack = KebabLimitsModSettings.GlobalMultistackMode == 2
+                ? checkOn
+                : profile.allowedMultistack;
+            int storeSimilar = KebabLimitsModSettings.GlobalSimilarStackEnabled
+                ? similarStackCount
+                : profile.SimilarStackCountRaw;
+            int storeDisplay = KebabLimitsModSettings.AddFilterDisplaySettings
+                ? filterDisplayMode
+                : profile.FilterListDisplayMode;
+
+            if (profile.allowedLimitPercents == range && profile.allowedMultistack == storeMultistack &&
+                profile.SimilarStackCountRaw == storeSimilar &&
+                profile.FilterListDisplayMode == storeDisplay)
             {
                 return;
             }
 
             bool eject = profile.allowedLimitPercents.max != range.max ||
-                         profile.SimilarStackCountRaw != similarStackCount;
+                         profile.SimilarStackCountRaw != storeSimilar;
             profile.allowedLimitPercents = range;
-            profile.allowedMultistack = checkOn;
-            profile.SimilarStackCountRaw = similarStackCount;
+            profile.allowedMultistack = storeMultistack;
+            profile.SimilarStackCountRaw = storeSimilar;
+            profile.FilterListDisplayMode = storeDisplay;
             // Set clamps per-item overrides when storage-wide / setting disallows exceeding the slider.
             StockpileProfileStore.Set(ActiveStockpileTabContext.ActiveStorageSettings, profile);
             profile.RemoveAllCache();

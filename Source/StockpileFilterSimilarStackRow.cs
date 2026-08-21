@@ -16,13 +16,11 @@ namespace HSKKebabLimits
         /// <summary>
         /// Returns a highlight rect that matches the drawn label height instead of the full row slot.
         /// </summary>
-        private static Rect LabelHighlightRect(Rect labelRect, string labelText)
+        private static Rect LabelHighlightRect(Rect labelRect)
         {
-            float textHeight = Mathf.Min(Text.CalcHeight(labelText, labelRect.width), labelRect.height);
-            textHeight = Mathf.Min(textHeight, RowTextHeight);
             Rect highlightRect = labelRect;
-            highlightRect.height = textHeight;
-            highlightRect.y += (labelRect.height - textHeight) * 0.5f;
+            highlightRect.height = Mathf.Min(RowTextHeight, labelRect.height);
+            highlightRect.y += (labelRect.height - highlightRect.height) * 0.5f;
             return highlightRect;
         }
 
@@ -89,7 +87,7 @@ namespace HSKKebabLimits
 
             string labelText = LabelForMode(similarStackCount);
             string modeTooltip = TooltipForMode(similarStackCount);
-            Rect highlightRect = LabelHighlightRect(labelRect, labelText);
+            Rect highlightRect = LabelHighlightRect(labelRect);
             if (!modeTooltip.NullOrEmpty())
             {
                 if (Mouse.IsOver(highlightRect))
@@ -100,7 +98,7 @@ namespace HSKKebabLimits
                 TooltipHandler.TipRegion(highlightRect, modeTooltip);
             }
 
-            Widgets.Label(labelRect, labelText);
+            OverflowMarqueeLabel.Draw(labelRect, labelText, highlightRect);
 
             WidgetRow widgetRow = new WidgetRow(similarRect.xMax, similarRect.y, UIDirection.LeftThenUp,
                 similarRect.width);

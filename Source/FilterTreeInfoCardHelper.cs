@@ -9,6 +9,9 @@ namespace HSKKebabLimits
     /// <summary>
     /// Opens Dialog_InfoCard on filter-tree row clicks outside excluded regions (checkbox, limit controls).
     /// Only ThingDef rows open a card; ThingCategoryDef rows are ignored (categories have no item stats).
+    ///
+    /// Открывает Dialog_InfoCard по клику по строке дерева фильтра вне исключённых зон (чекбокс, лимиты).
+    /// Карточка только у строк ThingDef; строки ThingCategoryDef игнорируются (у категорий нет статов предмета).
     /// </summary>
     public static class FilterTreeInfoCardHelper
     {
@@ -16,7 +19,9 @@ namespace HSKKebabLimits
             AccessTools.Property(typeof(Listing_Tree), "LabelWidth");
 
         /// <summary>
-        /// Set by <see cref="FilterTreeLimitRowPatch"/> when the current row drew custom limit +/- controls.
+        /// Set by FilterTreeLimitRowPatch when the current row drew custom limit +/- controls.
+        ///
+        /// Выставляется FilterTreeLimitRowPatch, если текущая строка нарисовала свои кнопки лимита +/-.
         /// </summary>
         public static bool LastRowDrewCustomLimitControls { get; set; }
 

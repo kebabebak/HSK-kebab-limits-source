@@ -241,6 +241,12 @@ namespace HSKKebabLimits
                 profile.SimilarStackCountRaw = similarCount;
             }
 
+            if (fields.TryGetValue("filterListDisplayMode", out string displayMode) &&
+                int.TryParse(displayMode, NumberStyles.Integer, CultureInfo.InvariantCulture, out int filterDisplayMode))
+            {
+                profile.FilterListDisplayMode = filterDisplayMode;
+            }
+
             if (fields.TryGetValue("allowedPerItem", out string perItem) && !perItem.NullOrEmpty())
             {
                 profile.ImportPerItemKvPairs(perItem);
@@ -279,6 +285,13 @@ namespace HSKKebabLimits
             return fields;
         }
 
+        /// <summary>
+        /// Writes every per-storage profile field. List display mode does not drop hidden item overrides.
+        /// Global UI toggles only hide editors; they do not omit fields from the preset.
+        ///
+        /// Пишет все поля профиля склада. Режим списка не отбрасывает скрытые per-item overrides.
+        /// Глобальные тумблеры UI только прячут редакторы и не убирают поля из пресета.
+        /// </summary>
         private static void WriteProfileFields(StreamWriter writer, StockpileLimitBundle profile)
         {
             WriteKvField(writer, "limitsLimitPercents",
@@ -286,6 +299,7 @@ namespace HSKKebabLimits
                 profile.allowedLimitPercents.max.ToString("N4", CultureInfo.InvariantCulture));
             WriteKvField(writer, "limitsAllowedMultistack", profile.allowedMultistack.ToString());
             WriteKvField(writer, "allowedSimilarStackCount", profile.SimilarStackCountRaw.ToString(CultureInfo.InvariantCulture));
+            WriteKvField(writer, "filterListDisplayMode", profile.FilterListDisplayMode.ToString(CultureInfo.InvariantCulture));
             WriteKvField(writer, "allowedPerItem", profile.ExportPerItemKvPairs());
         }
 
@@ -359,9 +373,11 @@ namespace HSKKebabLimits
     public partial class StockpileLimitBundle
     {
         /// <summary>
-        /// Serializes per-item overrides into KV preset pair syntax (def/limit/def/limit).
+        /// Serializes every per-item override into KV pair syntax (def/limit/def/limit). Rows hidden by the
+        /// storage list display mode are still included.
         ///
-        /// Сериализует per-item переопределения в синтаксис пар KV (def/limit/def/limit).
+        /// Сериализует все per-item переопределения в синтаксис пар KV (def/limit/def/limit). Строки, скрытые
+        /// режимом отображения списка склада, тоже входят в запись.
         /// </summary>
         internal string ExportPerItemKvPairs()
         {

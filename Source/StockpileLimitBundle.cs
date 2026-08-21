@@ -15,6 +15,7 @@ namespace HSKKebabLimits
         public FloatRange allowedLimitPercents = FloatRange.ZeroToOne;
         public bool allowedMultistack = true;
         private int allowedSimilarStackCount = -1;
+        private int filterListDisplayMode;
 
         public int SimilarStackCount =>
             allowedSimilarStackCount > 0 ? allowedSimilarStackCount : 0;
@@ -23,6 +24,30 @@ namespace HSKKebabLimits
         {
             get => allowedSimilarStackCount;
             set => allowedSimilarStackCount = value;
+        }
+
+        /// <summary>
+        /// Per-storage list filter: 0 show all, 1 allowed only, 2 forbidden only.
+        ///
+        /// Фильтр списка этого склада: 0 показывать все, 1 только разрешённое, 2 только запрещённое.
+        /// </summary>
+        public int FilterListDisplayMode
+        {
+            get => filterListDisplayMode;
+            set
+            {
+                if (value < 0)
+                {
+                    value = 0;
+                }
+
+                if (value > 2)
+                {
+                    value = 2;
+                }
+
+                filterListDisplayMode = value;
+            }
         }
 
         /// <summary>
@@ -41,6 +66,7 @@ namespace HSKKebabLimits
             allowedLimitPercents = other.allowedLimitPercents;
             allowedMultistack = other.allowedMultistack;
             allowedSimilarStackCount = other.allowedSimilarStackCount;
+            filterListDisplayMode = other.filterListDisplayMode;
         }
 
         /// <summary>
@@ -51,6 +77,7 @@ namespace HSKKebabLimits
             Scribe_Values.Look(ref allowedLimitPercents, "limitsLimitPercents", FloatRange.ZeroToOne);
             Scribe_Values.Look(ref allowedMultistack, "limitsAllowedMultistack", defaultValue: true);
             Scribe_Values.Look(ref allowedSimilarStackCount, "allowedSimilarStackCount", -1);
+            Scribe_Values.Look(ref filterListDisplayMode, "filterListDisplayMode", 0);
             perItemOverrides.ExposeData();
         }
 
@@ -71,6 +98,7 @@ namespace HSKKebabLimits
             sync.Bind(ref data.allowedLimitPercents);
             sync.Bind(ref data.allowedMultistack);
             sync.Bind(ref data.allowedSimilarStackCount);
+            sync.Bind(ref data.filterListDisplayMode);
         }
     }
 }

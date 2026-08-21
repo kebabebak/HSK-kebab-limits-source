@@ -6,6 +6,8 @@ namespace HSKKebabLimits
 {
     /// <summary>
     /// Non-linear mapping between stockpile slider positions (0–1) and absolute stack counts.
+    ///
+    /// Нелинейное соответствие между положением ползунка склада (0–1) и абсолютным числом предметов.
     /// </summary>
     internal static class LogarithmicStackScale
     {
@@ -29,7 +31,9 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// When the max handle sits near zero, nudge it so min/max sliders stay at least <paramref name="minSeparation"/> apart.
+        /// When the max handle sits near zero, nudge it so min/max sliders stay at least minSeparation apart.
+        ///
+        /// Если верхний ползунок у нуля, сдвигает его, чтобы min/max оставались не ближе minSeparation.
         /// </summary>
         public static bool BumpMaxSliderIfTooClose(float normalizedMin, ref float normalizedMax, int minSeparation)
         {
@@ -58,7 +62,11 @@ namespace HSKKebabLimits
             return Mathf.RoundToInt(cachedUpperBound * curved);
         }
 
-        /// <summary>Absolute count → slider fraction (inverse of <see cref="ToAbsoluteCount"/>).</summary>
+        /// <summary>
+        /// Absolute count → slider fraction (inverse of ToAbsoluteCount).
+        ///
+        /// Абсолютное число → доля ползунка (обратное к ToAbsoluteCount).
+        /// </summary>
         public static float ToNormalizedFraction(int absoluteCount)
         {
             EnsureUpperBound();

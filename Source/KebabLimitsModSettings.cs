@@ -5,7 +5,9 @@ using Verse;
 namespace HSKKebabLimits
 {
     /// <summary>
-    /// Mod settings and UI for HSK kebab limits storage limits, ejection, multistack, and slider display options.
+    /// Mod settings and UI for HSK kebab limits storage limits, ejection, multistack, filter list display, and slider options.
+    ///
+    /// Настройки мода и UI для лимитов хранилища HSK kebab limits, выброса, мультистака, отображения списка фильтра и ползунка.
     /// </summary>
     public class KebabLimitsModSettings : ModSettings
     {
@@ -21,6 +23,7 @@ namespace HSKKebabLimits
         public static bool PercentageMode;
         public static bool GlobalSimilarStackEnabled = true;
         public static bool AllowPerItemAboveSlider;
+        public static bool AddFilterDisplaySettings;
         public static bool EnableLogging;
         public static bool EnableNegativeSolveCache = true;
         public static int ZoneWideCascadeEjectMode;
@@ -111,6 +114,7 @@ namespace HSKKebabLimits
             PercentageMode = false;
             GlobalSimilarStackEnabled = true;
             AllowPerItemAboveSlider = false;
+            AddFilterDisplaySettings = false;
             EnableLogging = false;
             EnableNegativeSolveCache = true;
             ZoneWideCascadeEjectMode = 0;
@@ -778,6 +782,9 @@ namespace HSKKebabLimits
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawMultistackModeRow(listing);
             DrawSettingsRowSeparator(listing, viewWidth);
+            DrawSettingsCheckboxRow(listing, "AddFilterDisplaySettings".Translate(), ref AddFilterDisplaySettings,
+                defaultValue: false, "AddFilterDisplaySettingsTooltip".Translate());
+            DrawSettingsRowSeparator(listing, viewWidth);
             bool allowAboveBefore = AllowPerItemAboveSlider;
             DrawSettingsCheckboxRow(listing, "AllowPerItemAboveSlider".Translate(), ref AllowPerItemAboveSlider,
                 defaultValue: false, "AllowPerItemAboveSliderTooltip".Translate());
@@ -856,6 +863,8 @@ namespace HSKKebabLimits
             Scribe_Values.Look(ref GlobalSimilarStackEnabled, "GlobalSimilarStackEnabled", defaultValue: true,
                 forceSave: true);
             Scribe_Values.Look(ref AllowPerItemAboveSlider, "AllowPerItemAboveSlider", defaultValue: false,
+                forceSave: true);
+            Scribe_Values.Look(ref AddFilterDisplaySettings, "AddFilterDisplaySettings", defaultValue: false,
                 forceSave: true);
             Scribe_Values.Look(ref EnableLogging, "EnableLogging", defaultValue: false);
             Scribe_Values.Look(ref EnableNegativeSolveCache, "EnableNegativeSolveCache", defaultValue: true);
