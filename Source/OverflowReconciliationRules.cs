@@ -12,6 +12,28 @@ namespace HSKKebabLimits
 {
     public static partial class StockpileCapacityRules
     {
+        /// <summary>
+        /// Ejects overflow after a storage limit change, or schedules the same eject after a delay.
+        ///
+        /// Сбрасывает переполнение после смены лимита склада или ставит тот же сброс на задержку.
+        /// </summary>
+        public static void RequestOverflowReconcileAfterLimitChange(IStoreSettingsParent storeSettingsParent,
+            StockpileLimitBundle profile)
+        {
+            if (!KebabLimitsModSettings.EnableHardEjection || storeSettingsParent == null || profile == null)
+            {
+                return;
+            }
+
+            if (KebabLimitsModSettings.DelayHardEjectionAfterLimitChange)
+            {
+                DelayedZoneOverflowEjectComponent.ScheduleAfterLimitChange(storeSettingsParent);
+                return;
+            }
+
+            ReconcileOverflowAfterLimitChange(storeSettingsParent, profile);
+        }
+
         /// <summary>Recalculates haulables and ejects overflow after storage settings change on a zone or building.</summary>
         [SyncMethod(SyncContext.None)]
         public static void ReconcileOverflowAfterLimitChange(IStoreSettingsParent storeSettingsParent, StockpileLimitBundle profile)

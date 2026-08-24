@@ -138,9 +138,9 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws the caption or hover-only min/max fields above the slider, matching per-item limit editors.
+        /// Draws the stack-limit caption, or min/max fields while the pointer is over that caption.
         ///
-        /// Рисует подпись или min/max поля только при наведении над шкалой, как у редакторов лимита предметов.
+        /// Рисует подпись лимита стака или min/max поля, пока курсор над этой подписью.
         /// </summary>
         private static void DrawSliderOrDirectInput(Rect row, ref FloatRange range)
         {
@@ -150,8 +150,10 @@ namespace HSKKebabLimits
             Rect sliderBand = new Rect(row.x, labelBand.yMax, row.width, SliderBandHeight);
             GetFieldRects(labelBand, out Rect lowRect, out Rect highRect);
 
-            bool hovering = Mouse.IsOver(row);
-            if (hovering)
+            Rect captionHoverRect = LimitCaptionHoverRect(labelBand, range);
+            bool hoveringCaption = Mouse.IsOver(captionHoverRect);
+            bool hoveringFields = showingDirectInputFields && Mouse.IsOver(labelBand);
+            if (hoveringCaption || hoveringFields)
             {
                 DrawLimitFields(lowRect, highRect, ref range);
                 showingDirectInputFields = true;
@@ -177,6 +179,21 @@ namespace HSKKebabLimits
             LogarithmicStackScale.BumpMaxSliderIfTooClose(range.min, ref range.max, 1);
         }
 
+        private static Rect LimitCaptionHoverRect(Rect labelBand, FloatRange range)
+        {
+            GameFont previousFont = Text.Font;
+            Text.Font = GameFont.Small;
+            Vector2 size = Text.CalcSize(FormatLimitLabel(range.min, range.max));
+            Text.Font = previousFont;
+            float width = Mathf.Min(size.x, labelBand.width);
+            float height = Mathf.Min(size.y, labelBand.height);
+            return new Rect(
+                labelBand.x + (labelBand.width - width) * 0.5f,
+                labelBand.y + (labelBand.height - height) * 0.5f,
+                width,
+                height);
+        }
+
         private static void DrawLimitLabel(Rect labelBand, FloatRange range)
         {
             GameFont previousFont = Text.Font;
@@ -189,9 +206,10 @@ namespace HSKKebabLimits
                 ? LimitHighlight.GetColor()
                 : RangeControlTextColor;
 
-            if (Mouse.IsOver(labelBand))
+            Rect captionHoverRect = LimitCaptionHoverRect(labelBand, range);
+            if (Mouse.IsOver(captionHoverRect))
             {
-                Widgets.DrawHighlight(labelBand);
+                Widgets.DrawHighlight(captionHoverRect);
             }
 
             Widgets.LabelFit(labelBand, FormatLimitLabel(range.min, range.max));
@@ -291,9 +309,10 @@ namespace HSKKebabLimits
             profile.RemoveAllCache();
             StockpileCapacityRules.InvalidateHaulCachesForParent(ActiveStockpileTabContext.ActiveStorageSettings.owner,
                 profile);
-            if (eject && KebabLimitsModSettings.EnableHardEjection)
+            if (eject)
             {
-                StockpileCapacityRules.ReconcileOverflowAfterLimitChange(ActiveStockpileTabContext.ActiveStorageSettings.owner, profile);
+                StockpileCapacityRules.RequestOverflowReconcileAfterLimitChange(
+                    ActiveStockpileTabContext.ActiveStorageSettings.owner, profile);
             }
         }
     }

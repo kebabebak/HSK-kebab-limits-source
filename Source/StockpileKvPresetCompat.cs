@@ -143,10 +143,7 @@ namespace HSKKebabLimits
                     StockpileProfileStore.Set(settings, profile);
                     StockpileCapacityRules.InvalidateHaulCachesForParent(settings.owner, profile);
 
-                    if (KebabLimitsModSettings.EnableHardEjection)
-                    {
-                        StockpileCapacityRules.ReconcileOverflowAfterLimitChange(settings.owner, profile);
-                    }
+                    StockpileCapacityRules.RequestOverflowReconcileAfterLimitChange(settings.owner, profile);
                 }
                 catch (Exception ex)
                 {

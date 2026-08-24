@@ -5,12 +5,18 @@ using Verse;
 namespace HSKKebabLimits
 {
     /// <summary>
-    /// Harmony postfix on vanilla storage clipboard paste — restores HSK limits and optionally cascade-ejects overflow.
+    /// Harmony postfix on vanilla storage clipboard paste: restores HSK limits and may eject overflow.
+    ///
+    /// Harmony postfix на вставку буфера склада: восстанавливает лимиты HSK и может сбросить переполнение.
     /// </summary>
     [HarmonyPatch(typeof(StorageSettingsClipboard), "PasteInto")]
     public static class StockpileClipboardApplyHook
     {
-        /// <summary>Applies copied limit profile to target storage and ejects if hard ejection is enabled.</summary>
+        /// <summary>
+        /// Applies the copied limit profile to the target storage and may eject overflow.
+        ///
+        /// Применяет скопированный профиль лимита к целевому складу и может сбросить переполнение.
+        /// </summary>
         public static void Postfix(StorageSettings s)
         {
             if (StockpileClipboardSnapshot.Data == null)
@@ -23,10 +29,7 @@ namespace HSKKebabLimits
             StockpileProfileStore.Set(s, profile);
             StockpileCapacityRules.InvalidateHaulCachesForParent(s.owner, profile);
 
-            if (KebabLimitsModSettings.EnableHardEjection)
-            {
-                StockpileCapacityRules.ReconcileOverflowAfterLimitChange(s.owner, profile);
-            }
+            StockpileCapacityRules.RequestOverflowReconcileAfterLimitChange(s.owner, profile);
         }
     }
 }

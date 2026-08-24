@@ -15,8 +15,14 @@ namespace HSKKebabLimits
         public const int DefaultMaxStackSliderLimit = 5000;
         public const float DefaultHighlightColorPosition = 0.2f;
         public const int DefaultDelayedZoneEjectHours = 1;
+        public const int DefaultDelayHardEjectionHours = 1;
+        public const int DelayHardEjectionHoursMin = 1;
+        public const int DelayHardEjectionHoursMax = 12;
 
-        public static bool EnableHardEjection = true;
+        public static bool EnableHardEjection;
+        public static bool DelayHardEjectionAfterLimitChange;
+        public static int DelayHardEjectionHours = DefaultDelayHardEjectionHours;
+        public static string DelayHardEjectionHours_Buffer;
         public static float DisplayLogFactor = DefaultDisplayLogFactor;
         public static FloatRange DisplayLogExample = FloatRange.ZeroToOne;
         public static int GlobalMultistackMode;
@@ -58,6 +64,7 @@ namespace HSKKebabLimits
         private static readonly Color SettingsRowSeparatorColor = new Color(0.55f, 0.55f, 0.55f, 0.8f);
         private const float NonDefaultUnderlineThickness = 1f;
         private static readonly Color NonDefaultUnderlineColor = new Color(0.45f, 0.78f, 1f);
+        private static readonly Color SettingsDisabledVeilColor = new Color(0f, 0f, 0f, 0.45f);
 
         /// <summary>
         /// Draws a thin horizontal separator between rows in the mod settings panel.
@@ -107,7 +114,10 @@ namespace HSKKebabLimits
         {
             bool hadNegativeCache = EnableNegativeSolveCache;
 
-            EnableHardEjection = true;
+            EnableHardEjection = false;
+            DelayHardEjectionAfterLimitChange = false;
+            DelayHardEjectionHours = DefaultDelayHardEjectionHours;
+            DelayHardEjectionHours_Buffer = null;
             DisplayLogFactor = DefaultDisplayLogFactor;
             DisplayLogExample = FloatRange.ZeroToOne;
             GlobalMultistackMode = 0;
@@ -157,6 +167,44 @@ namespace HSKKebabLimits
             }
 
             listing.Gap(SettingsCheckboxRowGap);
+        }
+
+        /// <summary>
+        /// Swallows mouse input on a settings row so disabled controls cannot be changed.
+        ///
+        /// Поглощает клики по строке настроек, чтобы выключенные элементы нельзя было изменить.
+        /// </summary>
+        private static void BlockDisabledSettingsRowInput(Rect row, bool disabled)
+        {
+            if (!disabled || !Mouse.IsOver(row))
+            {
+                return;
+            }
+
+            Event current = Event.current;
+            if (current.type == EventType.MouseDown || current.type == EventType.MouseUp ||
+                current.type == EventType.MouseDrag)
+            {
+                current.Use();
+            }
+        }
+
+        /// <summary>
+        /// Draws a semi-transparent dark veil over an inactive settings row.
+        ///
+        /// Рисует полупрозрачную тёмную пелену поверх неактивной строки настроек.
+        /// </summary>
+        private static void DrawDisabledSettingsRowVeil(Rect row, bool disabled)
+        {
+            if (!disabled || Event.current.type != EventType.Repaint)
+            {
+                return;
+            }
+
+            Color previous = GUI.color;
+            GUI.color = SettingsDisabledVeilColor;
+            GUI.DrawTexture(row, BaseContent.WhiteTex);
+            GUI.color = previous;
         }
 
         /// <summary>
@@ -236,6 +284,28 @@ namespace HSKKebabLimits
             else if (MaxStackSliderLimit < 0)
             {
                 MaxStackSliderLimit = 0;
+            }
+        }
+
+        /// <summary>
+        /// Clamps delayed hard-ejection hours to the allowed whole-hour range.
+        ///
+        /// Ограничивает часы отложенного принудительного сброса допустимым целым диапазоном.
+        /// </summary>
+        private static void ClampDelayHardEjectionHoursInput()
+        {
+            if (!DelayHardEjectionHours_Buffer.NullOrEmpty() && DelayHardEjectionHours_Buffer.Length > 2)
+            {
+                DelayHardEjectionHours_Buffer = DelayHardEjectionHours_Buffer.Substring(0, 2);
+            }
+
+            if (DelayHardEjectionHours > DelayHardEjectionHoursMax)
+            {
+                DelayHardEjectionHours = DelayHardEjectionHoursMax;
+            }
+            else if (DelayHardEjectionHours < DelayHardEjectionHoursMin)
+            {
+                DelayHardEjectionHours = DelayHardEjectionHoursMin;
             }
         }
 
@@ -386,9 +456,9 @@ namespace HSKKebabLimits
         /// <summary>
         /// Updates zone-wide cascade eject mode and logs the change when logging is enabled.
         /// </summary>
-        private static void SetZoneWideCascadeEjectMode(int newMode)
+            private static void SetZoneWideCascadeEjectMode(int newMode)
         {
-            if (ZoneWideCascadeEjectMode == newMode)
+            if (!EnableHardEjection || ZoneWideCascadeEjectMode == newMode)
             {
                 return;
             }
@@ -476,13 +546,95 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
+        /// Draws the delayed hard-ejection hours row: numeric field plus enable checkbox.
+        ///
+        /// Рисует строку отложенного принудительного сброса: поле часов и чекбокс включения.
+        /// </summary>
+        private void DrawDelayHardEjectionRow(Listing_Standard listing)
+        {
+            const float checkboxSize = 24f;
+            const float checkboxGap = 4f;
+            bool interactive = EnableHardEjection;
+            Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !interactive);
+
+            Rect checkboxRect = new Rect(
+                row.xMax - checkboxSize,
+                row.y + (row.height - checkboxSize) / 2f,
+                checkboxSize,
+                checkboxSize);
+            Rect controlsHost = new Rect(row.x, row.y, Mathf.Max(0f, row.width - checkboxSize - checkboxGap),
+                row.height);
+            Rect fieldRect = CalcNumericFieldRect(row, controlsHost.RightHalf());
+            Rect labelRect = new Rect(row.x, row.y, Mathf.Max(0f, fieldRect.x - row.x - checkboxGap), row.height);
+            string label = "DelayHardEjectionAfterLimitChange".Translate();
+            string tooltip = "DelayHardEjectionAfterLimitChangeTooltip".Translate();
+
+            if (!tooltip.NullOrEmpty())
+            {
+                if (interactive && Mouse.IsOver(labelRect))
+                {
+                    Widgets.DrawHighlight(labelRect);
+                }
+
+                TooltipHandler.TipRegion(interactive ? labelRect : row, tooltip);
+            }
+
+            TextAnchor previousAnchor = Text.Anchor;
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(labelRect, label);
+            Text.Anchor = previousAnchor;
+
+            if (DelayHardEjectionAfterLimitChange || DelayHardEjectionHours != DefaultDelayHardEjectionHours)
+            {
+                DrawNonDefaultTextUnderline(labelRect, label, TextAnchor.MiddleLeft);
+            }
+
+            if (interactive)
+            {
+                int previousHours = DelayHardEjectionHours;
+                Widgets.TextFieldNumeric(fieldRect, ref DelayHardEjectionHours, ref DelayHardEjectionHours_Buffer,
+                    DelayHardEjectionHoursMin, DelayHardEjectionHoursMax);
+                ClampDelayHardEjectionHoursInput();
+                if (previousHours != DelayHardEjectionHours)
+                {
+                    KebabLimitsLog.Message(
+                        $"[HSK kebab limits] Delayed hard ejection after limit change set to {DelayHardEjectionHours} game hours (previous: {previousHours}h).");
+                }
+
+                bool previousDelay = DelayHardEjectionAfterLimitChange;
+                Widgets.Checkbox(new Vector2(checkboxRect.x, checkboxRect.y), ref DelayHardEjectionAfterLimitChange,
+                    checkboxSize);
+                if (previousDelay != DelayHardEjectionAfterLimitChange)
+                {
+                    KebabLimitsLog.Message(DelayHardEjectionAfterLimitChange
+                        ? $"[HSK kebab limits] Delayed hard ejection after limit change enabled ({DelayHardEjectionHours}h)."
+                        : "[HSK kebab limits] Delayed hard ejection after limit change disabled.");
+                }
+            }
+            else
+            {
+                Text.Anchor = TextAnchor.MiddleCenter;
+                Widgets.Label(fieldRect, DelayHardEjectionHours.ToString());
+                Text.Anchor = previousAnchor;
+                GUI.DrawTexture(checkboxRect,
+                    DelayHardEjectionAfterLimitChange ? Widgets.CheckboxOnTex : Widgets.CheckboxOffTex);
+            }
+
+            DrawDisabledSettingsRowVeil(row, !interactive);
+            listing.Gap(SettingsCheckboxRowGap);
+        }
+
+        /// <summary>
         /// Draws the zone-wide cascade eject mode selector with off and numbered mode buttons.
         /// </summary>
         private void DrawZoneWideCascadeEjectRow(Listing_Standard listing)
         {
             const float controlSize = 24f;
             const float digitGap = 4f;
+            bool interactive = EnableHardEjection;
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !interactive);
             DrawSettingsRowLabel(row, "ZoneWideCascadeEject".Translate(),
                 underlineNonDefault: ZoneWideCascadeEjectMode != 0);
 
@@ -490,35 +642,40 @@ namespace HSKKebabLimits
             float x = row.xMax - controlSize;
             Rect crossRect = new Rect(x, controlY, controlSize, controlSize);
             TooltipHandler.TipRegion(crossRect, "ZoneWideCascadeEjectDisabledTooltip".Translate());
-            if (Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
+            if (interactive && Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
             {
                 SetZoneWideCascadeEjectMode(0);
+            }
+            else if (!interactive)
+            {
+                GUI.DrawTexture(crossRect, Widgets.CheckboxOffTex);
             }
 
             x -= digitGap + controlSize;
             for (int mode = 3; mode >= 1; mode--)
             {
                 Rect digitRect = new Rect(x, controlY, controlSize, controlSize);
-                DrawZoneWideCascadeEjectDigit(digitRect, mode);
+                DrawZoneWideCascadeEjectDigit(digitRect, mode, interactive);
                 x -= digitGap + controlSize;
             }
 
+            DrawDisabledSettingsRowVeil(row, !interactive);
             listing.Gap(SettingsCheckboxRowGap);
         }
 
         /// <summary>
         /// Draws one selectable digit button for a cascade eject mode.
         /// </summary>
-        private void DrawZoneWideCascadeEjectDigit(Rect rect, int mode)
+        private void DrawZoneWideCascadeEjectDigit(Rect rect, int mode, bool interactive)
         {
             string tooltipKey = "ZoneWideCascadeEjectMode" + mode + "Tooltip";
             TooltipHandler.TipRegion(rect, tooltipKey.Translate());
-            if (Mouse.IsOver(rect))
+            if (interactive && Mouse.IsOver(rect))
             {
                 Widgets.DrawHighlight(rect);
             }
 
-            if (Widgets.ButtonInvisible(rect))
+            if (interactive && Widgets.ButtonInvisible(rect))
             {
                 SetZoneWideCascadeEjectMode(mode);
             }
@@ -774,7 +931,9 @@ namespace HSKKebabLimits
 
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawSettingsCheckboxRow(listing, "EnableHardEjection".Translate(), ref EnableHardEjection,
-                defaultValue: true, "EnableHardEjectionTooltip".Translate());
+                defaultValue: false, "EnableHardEjectionTooltip".Translate());
+            DrawSettingsRowSeparator(listing, viewWidth);
+            DrawDelayHardEjectionRow(listing);
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawZoneWideCascadeEjectRow(listing);
             DrawSettingsRowSeparator(listing, viewWidth);
@@ -856,7 +1015,12 @@ namespace HSKKebabLimits
         public override void ExposeData()
         {
             base.ExposeData();
-            Scribe_Values.Look(ref EnableHardEjection, "EnableHardEjection", defaultValue: true, forceSave: true);
+            Scribe_Values.Look(ref EnableHardEjection, "EnableHardEjection", defaultValue: false, forceSave: true);
+            Scribe_Values.Look(ref DelayHardEjectionAfterLimitChange, "DelayHardEjectionAfterLimitChange",
+                defaultValue: false, forceSave: true);
+            Scribe_Values.Look(ref DelayHardEjectionHours, "DelayHardEjectionHours", DefaultDelayHardEjectionHours,
+                forceSave: true);
+            ClampDelayHardEjectionHoursInput();
             Scribe_Values.Look(ref DisplayLogFactor, "DisplayLogFactor", DefaultDisplayLogFactor, forceSave: true);
             Scribe_Values.Look(ref GlobalMultistackMode, "GlobalMultistackMode", 0, forceSave: true);
             Scribe_Values.Look(ref PercentageMode, "PercentageMode", defaultValue: false, forceSave: true);
