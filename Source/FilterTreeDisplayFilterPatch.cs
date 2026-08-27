@@ -39,6 +39,25 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
+        /// Returns whether storage filter trees should draw items as a flat list without category headers.
+        ///
+        /// Возвращает, нужно ли рисовать деревья фильтра склада сплошным списком предметов без заголовков категорий.
+        /// </summary>
+        public static bool FlattenCategoriesActive()
+        {
+            if (!KebabLimitsModSettings.AddFilterDisplaySettings ||
+                !KebabLimitsModSettings.ExpandFilterCategories ||
+                !ActiveStockpileTabContext.DrawingStorageTab ||
+                ActiveStockpileTabContext.ActiveStorageSettings == null ||
+                ActiveStockpileTabContext.ActiveStorageSettings.owner is Building_Bookcase)
+            {
+                return false;
+            }
+
+            return true;
+        }
+
+        /// <summary>
         /// Returns whether an allowed/forbidden item should stay visible in the current list mode.
         ///
         /// Возвращает, должен ли разрешённый/запрещённый предмет оставаться видимым в текущем режиме списка.

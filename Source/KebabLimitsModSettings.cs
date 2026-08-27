@@ -30,6 +30,7 @@ namespace HSKKebabLimits
         public static bool GlobalSimilarStackEnabled = true;
         public static bool AllowPerItemAboveSlider;
         public static bool AddFilterDisplaySettings;
+        public static bool ExpandFilterCategories;
         public static bool EnableLogging;
         public static bool EnableNegativeSolveCache = true;
         public static int ZoneWideCascadeEjectMode;
@@ -125,6 +126,7 @@ namespace HSKKebabLimits
             GlobalSimilarStackEnabled = true;
             AllowPerItemAboveSlider = false;
             AddFilterDisplaySettings = false;
+            ExpandFilterCategories = false;
             EnableLogging = false;
             EnableNegativeSolveCache = true;
             ZoneWideCascadeEjectMode = 0;
@@ -626,6 +628,58 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
+        /// Draws the expand-categories checkbox; the row ignores the cursor and is veiled when display settings are off.
+        ///
+        /// Рисует чекбокс «развернуть категории»; строка не принимает курсор и затемнена, если настройки отображения выключены.
+        /// </summary>
+        private void DrawExpandFilterCategoriesRow(Listing_Standard listing)
+        {
+            const float checkboxSize = 24f;
+            bool interactive = AddFilterDisplaySettings;
+            Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !interactive);
+
+            string label = "ExpandFilterCategories".Translate();
+            string tooltip = "ExpandFilterCategoriesTooltip".Translate();
+            if (!tooltip.NullOrEmpty())
+            {
+                if (interactive && Mouse.IsOver(row))
+                {
+                    Widgets.DrawHighlight(row);
+                }
+
+                TooltipHandler.TipRegion(row, tooltip);
+            }
+
+            if (interactive)
+            {
+                Widgets.CheckboxLabeled(row, label, ref ExpandFilterCategories);
+            }
+            else
+            {
+                TextAnchor previousAnchor = Text.Anchor;
+                Text.Anchor = TextAnchor.MiddleLeft;
+                Widgets.Label(row, label);
+                Text.Anchor = previousAnchor;
+                Rect checkboxRect = new Rect(
+                    row.xMax - checkboxSize,
+                    row.y + (row.height - checkboxSize) / 2f,
+                    checkboxSize,
+                    checkboxSize);
+                GUI.DrawTexture(checkboxRect,
+                    ExpandFilterCategories ? Widgets.CheckboxOnTex : Widgets.CheckboxOffTex);
+            }
+
+            if (ExpandFilterCategories)
+            {
+                DrawNonDefaultTextUnderline(row, label, TextAnchor.MiddleLeft);
+            }
+
+            DrawDisabledSettingsRowVeil(row, !interactive);
+            listing.Gap(SettingsCheckboxRowGap);
+        }
+
+        /// <summary>
         /// Draws the zone-wide cascade eject mode selector with off and numbered mode buttons.
         /// </summary>
         private void DrawZoneWideCascadeEjectRow(Listing_Standard listing)
@@ -944,6 +998,8 @@ namespace HSKKebabLimits
             DrawSettingsCheckboxRow(listing, "AddFilterDisplaySettings".Translate(), ref AddFilterDisplaySettings,
                 defaultValue: false, "AddFilterDisplaySettingsTooltip".Translate());
             DrawSettingsRowSeparator(listing, viewWidth);
+            DrawExpandFilterCategoriesRow(listing);
+            DrawSettingsRowSeparator(listing, viewWidth);
             bool allowAboveBefore = AllowPerItemAboveSlider;
             DrawSettingsCheckboxRow(listing, "AllowPerItemAboveSlider".Translate(), ref AllowPerItemAboveSlider,
                 defaultValue: false, "AllowPerItemAboveSliderTooltip".Translate());
@@ -1029,6 +1085,8 @@ namespace HSKKebabLimits
             Scribe_Values.Look(ref AllowPerItemAboveSlider, "AllowPerItemAboveSlider", defaultValue: false,
                 forceSave: true);
             Scribe_Values.Look(ref AddFilterDisplaySettings, "AddFilterDisplaySettings", defaultValue: false,
+                forceSave: true);
+            Scribe_Values.Look(ref ExpandFilterCategories, "ExpandFilterCategories", defaultValue: false,
                 forceSave: true);
             Scribe_Values.Look(ref EnableLogging, "EnableLogging", defaultValue: false);
             Scribe_Values.Look(ref EnableNegativeSolveCache, "EnableNegativeSolveCache", defaultValue: true);

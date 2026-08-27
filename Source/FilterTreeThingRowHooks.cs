@@ -41,6 +41,12 @@ namespace HSKKebabLimits
         /// </summary>
         public static void Postfix(ThingDef tDef, Listing_TreeThingFilter __instance)
         {
+            if (FilterTreeFlattenCategoriesPatch.SkipDuplicateThingDefPostfix)
+            {
+                FilterTreeFlattenCategoriesPatch.SkipDuplicateThingDefPostfix = false;
+                return;
+            }
+
             FilterTreeInfoCardHelper.TryOpenOnNonStorageFilterRow(tDef, null, __instance);
             Instance = null;
             FilterTreeLimitRowPatch.HookedThingDef = null;
@@ -58,6 +64,11 @@ namespace HSKKebabLimits
         /// </summary>
         public static void Prefix(TreeNode_ThingCategory node, Listing_TreeThingFilter __instance)
         {
+            if (FilterTreeDisplayFilter.FlattenCategoriesActive())
+            {
+                return;
+            }
+
             FilterTreeThingRowHooks.Instance = __instance;
             FilterTreeLimitRowPatch.HookedThingCategory = node.catDef;
             FilterTreeInfoCardHelper.BeginFilterRow(__instance);
@@ -68,6 +79,11 @@ namespace HSKKebabLimits
         /// </summary>
         public static void Postfix(TreeNode_ThingCategory node, Listing_TreeThingFilter __instance)
         {
+            if (FilterTreeDisplayFilter.FlattenCategoriesActive())
+            {
+                return;
+            }
+
             FilterTreeInfoCardHelper.TryOpenOnNonStorageFilterRow(null, node?.catDef, __instance);
             FilterTreeThingRowHooks.Instance = null;
             FilterTreeLimitRowPatch.HookedThingCategory = null;
