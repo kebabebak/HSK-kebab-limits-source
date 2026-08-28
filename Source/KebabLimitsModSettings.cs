@@ -30,7 +30,7 @@ namespace HSKKebabLimits
         public static bool GlobalSimilarStackEnabled = true;
         public static bool AllowPerItemAboveSlider;
         public static bool AddFilterDisplaySettings;
-        public static bool ExpandFilterCategories;
+        public static int ExpandFilterCategoriesMode;
         public static bool EnableLogging;
         public static bool EnableNegativeSolveCache = true;
         public static int ZoneWideCascadeEjectMode;
@@ -126,7 +126,7 @@ namespace HSKKebabLimits
             GlobalSimilarStackEnabled = true;
             AllowPerItemAboveSlider = false;
             AddFilterDisplaySettings = false;
-            ExpandFilterCategories = false;
+            ExpandFilterCategoriesMode = 0;
             EnableLogging = false;
             EnableNegativeSolveCache = true;
             ZoneWideCascadeEjectMode = 0;
@@ -479,6 +479,31 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
+        /// Updates expand-categories mode and logs the change when logging is enabled.
+        ///
+        /// Обновляет режим разворачивания категорий и пишет в лог, если логирование включено.
+        /// </summary>
+        private static void SetExpandFilterCategoriesMode(int newMode)
+        {
+            if (ExpandFilterCategoriesMode == newMode)
+            {
+                return;
+            }
+
+            int previousMode = ExpandFilterCategoriesMode;
+            ExpandFilterCategoriesMode = newMode;
+            if (newMode == 0)
+            {
+                KebabLimitsLog.Message("[HSK kebab limits] Expand categories disabled (cross).");
+            }
+            else
+            {
+                KebabLimitsLog.Message(
+                    $"[HSK kebab limits] Expand categories mode {newMode} enabled (previous: {previousMode}).");
+            }
+        }
+
+        /// <summary>
         /// Updates global multistack mode and logs the change when logging is enabled.
         /// </summary>
         private static void SetGlobalMultistackMode(int newMode)
@@ -628,55 +653,93 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws the expand-categories checkbox; the row ignores the cursor and is veiled when display settings are off.
+        /// Draws the expand-categories mode selector; the row ignores the cursor and is veiled when display settings are off.
         ///
-        /// Рисует чекбокс «развернуть категории»; строка не принимает курсор и затемнена, если настройки отображения выключены.
+        /// Рисует выбор режима «развернуть категории»; строка не принимает курсор и затемнена, если настройки отображения выключены.
         /// </summary>
         private void DrawExpandFilterCategoriesRow(Listing_Standard listing)
         {
-            const float checkboxSize = 24f;
+            const float controlSize = 24f;
+            const float digitGap = 4f;
+            const int controlCount = 3;
+            float controlsWidth = controlCount * controlSize + (controlCount - 1) * digitGap;
             bool interactive = AddFilterDisplaySettings;
+
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
             BlockDisabledSettingsRowInput(row, !interactive);
 
-            string label = "ExpandFilterCategories".Translate();
-            string tooltip = "ExpandFilterCategoriesTooltip".Translate();
-            if (!tooltip.NullOrEmpty())
-            {
-                if (interactive && Mouse.IsOver(row))
-                {
-                    Widgets.DrawHighlight(row);
-                }
+            Rect labelRect = row;
+            labelRect.width = Mathf.Max(0f, row.width - controlsWidth);
+            DrawSettingsRowLabel(labelRect, "ExpandFilterCategories".Translate(),
+                underlineNonDefault: ExpandFilterCategoriesMode != 0);
 
-                TooltipHandler.TipRegion(row, tooltip);
-            }
-
-            if (interactive)
+            float controlY = row.y + (row.height - controlSize) / 2f;
+            float x = row.xMax - controlSize;
+            Rect crossRect = new Rect(x, controlY, controlSize, controlSize);
+            TooltipHandler.TipRegion(crossRect, "ExpandFilterCategoriesModeDisabledTooltip".Translate());
+            if (interactive && Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
             {
-                Widgets.CheckboxLabeled(row, label, ref ExpandFilterCategories);
+                SetExpandFilterCategoriesMode(0);
             }
-            else
+            else if (!interactive)
             {
-                TextAnchor previousAnchor = Text.Anchor;
-                Text.Anchor = TextAnchor.MiddleLeft;
-                Widgets.Label(row, label);
-                Text.Anchor = previousAnchor;
-                Rect checkboxRect = new Rect(
-                    row.xMax - checkboxSize,
-                    row.y + (row.height - checkboxSize) / 2f,
-                    checkboxSize,
-                    checkboxSize);
-                GUI.DrawTexture(checkboxRect,
-                    ExpandFilterCategories ? Widgets.CheckboxOnTex : Widgets.CheckboxOffTex);
+                GUI.DrawTexture(crossRect, Widgets.CheckboxOffTex);
             }
 
-            if (ExpandFilterCategories)
-            {
-                DrawNonDefaultTextUnderline(row, label, TextAnchor.MiddleLeft);
-            }
+            x -= digitGap + controlSize;
+            DrawExpandFilterCategoriesDigit(new Rect(x, controlY, controlSize, controlSize), 2, interactive);
+            x -= digitGap + controlSize;
+            DrawExpandFilterCategoriesDigit(new Rect(x, controlY, controlSize, controlSize), 1, interactive);
 
             DrawDisabledSettingsRowVeil(row, !interactive);
             listing.Gap(SettingsCheckboxRowGap);
+        }
+
+        /// <summary>
+        /// Draws one selectable digit button for an expand-categories mode preset.
+        ///
+        /// Рисует одну кнопку-цифру пресета режима разворачивания категорий.
+        /// </summary>
+        private void DrawExpandFilterCategoriesDigit(Rect rect, int mode, bool interactive)
+        {
+            string tooltipKey = mode == 1
+                ? "ExpandFilterCategoriesModePerStorageTooltip"
+                : "ExpandFilterCategoriesModeGlobalTooltip";
+            TooltipHandler.TipRegion(rect, tooltipKey.Translate());
+            if (interactive && Mouse.IsOver(rect))
+            {
+                Widgets.DrawHighlight(rect);
+            }
+
+            if (interactive && Widgets.ButtonInvisible(rect))
+            {
+                SetExpandFilterCategoriesMode(mode);
+            }
+
+            bool active = ExpandFilterCategoriesMode == mode;
+            if (active)
+            {
+                DrawInnerBoxBorder(rect, 2f, ModeDigitActiveColor);
+            }
+
+            Color digitColor = ExpandFilterCategoriesMode == 0
+                ? ModeDigitDisabledColor
+                : active ? ModeDigitActiveColor : ModeDigitInactiveColor;
+
+            GameFont previousFont = Text.Font;
+            TextAnchor previousAnchor = Text.Anchor;
+            Color previousColor = GUI.color;
+            Text.Font = GameFont.Medium;
+            GUIStyle labelStyle = new GUIStyle(Text.CurFontStyle)
+            {
+                alignment = TextAnchor.MiddleCenter,
+                fontStyle = FontStyle.Bold
+            };
+            GUI.color = digitColor;
+            GUI.Label(rect, mode.ToString(), labelStyle);
+            GUI.color = previousColor;
+            Text.Anchor = previousAnchor;
+            Text.Font = previousFont;
         }
 
         /// <summary>
@@ -1086,8 +1149,29 @@ namespace HSKKebabLimits
                 forceSave: true);
             Scribe_Values.Look(ref AddFilterDisplaySettings, "AddFilterDisplaySettings", defaultValue: false,
                 forceSave: true);
-            Scribe_Values.Look(ref ExpandFilterCategories, "ExpandFilterCategories", defaultValue: false,
-                forceSave: true);
+            if (Scribe.mode == LoadSaveMode.Saving)
+            {
+                Scribe_Values.Look(ref ExpandFilterCategoriesMode, "ExpandFilterCategoriesMode", 0, forceSave: true);
+            }
+            else if (Scribe.mode == LoadSaveMode.LoadingVars)
+            {
+                int loadedMode = -1;
+                Scribe_Values.Look(ref loadedMode, "ExpandFilterCategoriesMode", -1);
+                if (loadedMode < 0)
+                {
+                    bool oldExpand = false;
+                    Scribe_Values.Look(ref oldExpand, "ExpandFilterCategories", defaultValue: false);
+                    ExpandFilterCategoriesMode = oldExpand ? 2 : 0;
+                }
+                else if (loadedMode > 2)
+                {
+                    ExpandFilterCategoriesMode = 0;
+                }
+                else
+                {
+                    ExpandFilterCategoriesMode = loadedMode;
+                }
+            }
             Scribe_Values.Look(ref EnableLogging, "EnableLogging", defaultValue: false);
             Scribe_Values.Look(ref EnableNegativeSolveCache, "EnableNegativeSolveCache", defaultValue: true);
             Scribe_Values.Look(ref ZoneWideCascadeEjectMode, "ZoneWideCascadeEjectMode", 0);

@@ -87,14 +87,15 @@ namespace HSKKebabLimits
             bool checkOn = profile.allowedMultistack;
             int similarStackCount = profile.SimilarStackCountRaw;
             int filterDisplayMode = profile.FilterListDisplayMode;
+            bool expandCategories = profile.expandFilterCategories;
             DrawSliderOrDirectInput(row, ref range);
             DrawMultistackCheckbox(perStorageMultistack, width, row, ref checkOn);
 
             y += RowHeight;
             y += 5f;
             StockpileFilterSimilarStackRow.Draw(ref y, width, perStorageMultistack, ref similarStackCount, ref checkOn);
-            StockpileFilterDisplayRow.Draw(ref y, width, ref filterDisplayMode);
-            CommitProfileChanges(profile, range, checkOn, similarStackCount, filterDisplayMode);
+            StockpileFilterDisplayRow.Draw(ref y, width, ref filterDisplayMode, ref expandCategories);
+            CommitProfileChanges(profile, range, checkOn, similarStackCount, filterDisplayMode, expandCategories);
             Text.Font = GameFont.Small;
         }
 
@@ -275,7 +276,7 @@ namespace HSKKebabLimits
         }
 
         private static void CommitProfileChanges(StockpileLimitBundle profile, FloatRange range, bool checkOn,
-            int similarStackCount, int filterDisplayMode)
+            int similarStackCount, int filterDisplayMode, bool expandCategories)
         {
             // Keep stored values when their editor is not drawn (global toggle off). Item rows hidden
             // by show-allowed/forbidden stay on the profile and are not part of this commit.
@@ -290,10 +291,15 @@ namespace HSKKebabLimits
             int storeDisplay = KebabLimitsModSettings.AddFilterDisplaySettings
                 ? filterDisplayMode
                 : profile.FilterListDisplayMode;
+            bool storeExpand = KebabLimitsModSettings.AddFilterDisplaySettings &&
+                KebabLimitsModSettings.ExpandFilterCategoriesMode == 1
+                ? expandCategories
+                : profile.expandFilterCategories;
 
             if (profile.allowedLimitPercents == range && profile.allowedMultistack == storeMultistack &&
                 profile.SimilarStackCountRaw == storeSimilar &&
-                profile.FilterListDisplayMode == storeDisplay)
+                profile.FilterListDisplayMode == storeDisplay &&
+                profile.expandFilterCategories == storeExpand)
             {
                 return;
             }
@@ -304,6 +310,7 @@ namespace HSKKebabLimits
             profile.allowedMultistack = storeMultistack;
             profile.SimilarStackCountRaw = storeSimilar;
             profile.FilterListDisplayMode = storeDisplay;
+            profile.expandFilterCategories = storeExpand;
             // Set clamps per-item overrides when storage-wide / setting disallows exceeding the slider.
             StockpileProfileStore.Set(ActiveStockpileTabContext.ActiveStorageSettings, profile);
             profile.RemoveAllCache();

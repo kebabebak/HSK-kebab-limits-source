@@ -46,7 +46,7 @@ namespace HSKKebabLimits
         public static bool FlattenCategoriesActive()
         {
             if (!KebabLimitsModSettings.AddFilterDisplaySettings ||
-                !KebabLimitsModSettings.ExpandFilterCategories ||
+                KebabLimitsModSettings.ExpandFilterCategoriesMode == 0 ||
                 !ActiveStockpileTabContext.DrawingStorageTab ||
                 ActiveStockpileTabContext.ActiveStorageSettings == null ||
                 ActiveStockpileTabContext.ActiveStorageSettings.owner is Building_Bookcase)
@@ -54,7 +54,14 @@ namespace HSKKebabLimits
                 return false;
             }
 
-            return true;
+            if (KebabLimitsModSettings.ExpandFilterCategoriesMode == 2)
+            {
+                return true;
+            }
+
+            StockpileLimitBundle profile =
+                StockpileProfileStore.GetOrNull(ActiveStockpileTabContext.ActiveStorageSettings);
+            return profile != null && profile.expandFilterCategories;
         }
 
         /// <summary>

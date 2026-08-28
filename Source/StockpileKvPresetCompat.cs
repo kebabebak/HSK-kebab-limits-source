@@ -244,6 +244,12 @@ namespace HSKKebabLimits
                 profile.FilterListDisplayMode = filterDisplayMode;
             }
 
+            if (fields.TryGetValue("expandFilterCategories", out string expandCategories) &&
+                bool.TryParse(expandCategories, out bool expandFilterCategories))
+            {
+                profile.expandFilterCategories = expandFilterCategories;
+            }
+
             if (fields.TryGetValue("allowedPerItem", out string perItem) && !perItem.NullOrEmpty())
             {
                 profile.ImportPerItemKvPairs(perItem);
@@ -297,6 +303,7 @@ namespace HSKKebabLimits
             WriteKvField(writer, "limitsAllowedMultistack", profile.allowedMultistack.ToString());
             WriteKvField(writer, "allowedSimilarStackCount", profile.SimilarStackCountRaw.ToString(CultureInfo.InvariantCulture));
             WriteKvField(writer, "filterListDisplayMode", profile.FilterListDisplayMode.ToString(CultureInfo.InvariantCulture));
+            WriteKvField(writer, "expandFilterCategories", profile.expandFilterCategories.ToString());
             WriteKvField(writer, "allowedPerItem", profile.ExportPerItemKvPairs());
         }
 
