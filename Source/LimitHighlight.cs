@@ -66,10 +66,59 @@ namespace HSKKebabLimits
 
         /// <summary>
         /// Returns the user-selected highlight color from mod settings.
+        ///
+        /// Возвращает выбранный в настройках цвет выделения.
         /// </summary>
         public static Color GetColor()
         {
             return SampleColor(KebabLimitsModSettings.HighlightColorPosition);
+        }
+
+        /// <summary>
+        /// Color for a limit set above the storage slider. Uses the separate slider when that option is on, otherwise the opposite hue of the usual modified-limit color.
+        ///
+        /// Цвет лимита выше ползунка склада. Отдельный ползунок, если эта опция включена, иначе противоположный оттенок обычного цвета изменённых лимитов.
+        /// </summary>
+        public static Color GetRaisedLimitColor()
+        {
+            if (KebabLimitsModSettings.AllowPerItemAboveSlider &&
+                KebabLimitsModSettings.SeparateRaisedLimitHighlightColor)
+            {
+                return SampleColor(KebabLimitsModSettings.RaisedLimitHighlightColorPosition);
+            }
+
+            return OppositeHue(GetColor());
+        }
+
+        /// <summary>
+        /// Highlight for a filter-tree limit row. A value above the storage slider uses the raised-limit color.
+        ///
+        /// Цвет строки лимита в списке склада. Значение выше ползунка склада берёт цвет повышенного лимита.
+        /// </summary>
+        public static Color ColorForFilterLimit(bool hasOverride, int displayLimit, int sliderDefault)
+        {
+            if (hasOverride && displayLimit > sliderDefault)
+            {
+                return GetRaisedLimitColor();
+            }
+
+            return hasOverride ? GetColor() : Color.yellow;
+        }
+
+        /// <summary>
+        /// Shifts a color to the opposite side of the hue wheel. Gray stays unchanged.
+        ///
+        /// Сдвигает цвет на противоположную сторону цветового круга. Серый не меняется.
+        /// </summary>
+        private static Color OppositeHue(Color color)
+        {
+            Color.RGBToHSV(color, out float hue, out float saturation, out float value);
+            if (saturation < 0.01f)
+            {
+                return color;
+            }
+
+            return Color.HSVToRGB(Mathf.Repeat(hue + 0.5f, 1f), saturation, value);
         }
 
         /// <summary>

@@ -14,6 +14,7 @@ namespace HSKKebabLimits
         public const float DefaultDisplayLogFactor = 3f;
         public const int DefaultMaxStackSliderLimit = 5000;
         public const float DefaultHighlightColorPosition = 0.2f;
+        public const float DefaultRaisedLimitHighlightColorPosition = 0.6f;
         public const int DefaultDelayedZoneEjectHours = 1;
         public const int DefaultDelayHardEjectionHours = 1;
         public const int DelayHardEjectionHoursMin = 1;
@@ -29,6 +30,7 @@ namespace HSKKebabLimits
         public static bool PercentageMode;
         public static bool GlobalSimilarStackEnabled = true;
         public static bool AllowPerItemAboveSlider;
+        public static bool SeparateRaisedLimitHighlightColor;
         public static bool AddFilterDisplaySettings;
         public static int ExpandFilterCategoriesMode;
         public static bool EnableLogging;
@@ -39,6 +41,7 @@ namespace HSKKebabLimits
         public static string MaxStackSliderLimit_Buffer;
         public static string DisplayLogFactor_Buffer;
         public static float HighlightColorPosition = DefaultHighlightColorPosition;
+        public static float RaisedLimitHighlightColorPosition = DefaultRaisedLimitHighlightColorPosition;
 
         public static Color HighlightColor => LimitHighlight.SampleColor(HighlightColorPosition);
 
@@ -54,7 +57,6 @@ namespace HSKKebabLimits
         private const int MaxStackSliderLimitMaxDigits = 8;
         private const float SettingResetButtonWidth = 80f;
         private const float SettingResetButtonGap = 4f;
-        private const float PreviewToHighlightColorGap = 14f;
 
         private Vector2 settingsScrollPosition;
         private float settingsScrollContentHeight = 600f;
@@ -125,6 +127,7 @@ namespace HSKKebabLimits
             PercentageMode = false;
             GlobalSimilarStackEnabled = true;
             AllowPerItemAboveSlider = false;
+            SeparateRaisedLimitHighlightColor = false;
             AddFilterDisplaySettings = false;
             ExpandFilterCategoriesMode = 0;
             EnableLogging = false;
@@ -135,6 +138,7 @@ namespace HSKKebabLimits
             MaxStackSliderLimit_Buffer = null;
             DisplayLogFactor_Buffer = null;
             HighlightColorPosition = DefaultHighlightColorPosition;
+            RaisedLimitHighlightColorPosition = DefaultRaisedLimitHighlightColorPosition;
 
             if (hadNegativeCache)
             {
@@ -172,9 +176,9 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Swallows mouse input on a settings row so disabled controls cannot be changed.
+        /// Marks mouse events used on a veiled settings row. CheckboxLabeled still toggles after this, so a veiled checkbox must also be drawn disabled.
         ///
-        /// Поглощает клики по строке настроек, чтобы выключенные элементы нельзя было изменить.
+        /// Помечает события мыши на затемнённой строке использованными. CheckboxLabeled после этого всё равно переключается, поэтому затемнённый чекбокс нужно рисовать недоступным.
         /// </summary>
         private static void BlockDisabledSettingsRowInput(Rect row, bool disabled)
         {
@@ -426,11 +430,127 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
+        /// Draws the raised-limit color label. The row ignores the cursor when a separate color is not in use.
+        ///
+        /// Рисует подпись цвета повышенного лимита. Строка не принимает курсор, пока отдельный цвет не используется.
+        /// </summary>
+        private void DrawRaisedLimitHighlightColorHeader(Listing_Standard listing, bool interactive)
+        {
+            Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !interactive);
+            string label = "RaisedLimitHighlightColorLabel".Translate();
+            Rect resetRect = new Rect(
+                row.xMax - SettingResetButtonWidth,
+                row.y + (row.height - NumericFieldHeight) / 2f,
+                SettingResetButtonWidth,
+                NumericFieldHeight);
+            Rect labelRect = row;
+            labelRect.width = resetRect.xMin - SettingResetButtonGap - row.x;
+
+            TextAnchor previousAnchor = Text.Anchor;
+            Text.Anchor = TextAnchor.MiddleLeft;
+            Widgets.Label(labelRect, label);
+            Text.Anchor = previousAnchor;
+
+            if (IsNonDefaultFloat(RaisedLimitHighlightColorPosition, DefaultRaisedLimitHighlightColorPosition))
+            {
+                DrawNonDefaultTextUnderline(labelRect, label, TextAnchor.MiddleLeft);
+            }
+
+            if (interactive)
+            {
+                DrawSettingResetButton(resetRect, label, ResetRaisedLimitHighlightColor);
+            }
+            else
+            {
+                Widgets.ButtonText(resetRect, "ResetSetting".Translate(), drawBackground: true, doMouseoverSound: false, active: false);
+            }
+
+            DrawDisabledSettingsRowVeil(row, !interactive);
+            listing.Gap(SettingsCheckboxRowGap);
+        }
+
+        /// <summary>
+        /// Draws the raised-limit color checkbox. Until per-item limits may exceed the storage slider, CheckboxLabeled is drawn disabled and the row is veiled.
+        ///
+        /// Рисует чекбокс отдельного цвета повышенного лимита. Пока лимит предмета не может быть выше ползунка склада, чекбокс рисуется недоступным и строка затемнена.
+        /// </summary>
+        private void DrawSeparateRaisedLimitColorRow(Listing_Standard listing)
+        {
+            bool interactive = AllowPerItemAboveSlider;
+            Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !interactive);
+            string label = "SeparateRaisedLimitHighlightColor".Translate();
+            string tooltip = "SeparateRaisedLimitHighlightColorTooltip".Translate();
+            if (!tooltip.NullOrEmpty())
+            {
+                if (interactive && Mouse.IsOver(row))
+                {
+                    Widgets.DrawHighlight(row);
+                }
+
+                TooltipHandler.TipRegion(row, tooltip);
+            }
+
+            Widgets.CheckboxLabeled(row, label, ref SeparateRaisedLimitHighlightColor, disabled: !interactive);
+            if (SeparateRaisedLimitHighlightColor)
+            {
+                DrawNonDefaultTextUnderline(row, label, TextAnchor.MiddleLeft);
+            }
+
+            DrawDisabledSettingsRowVeil(row, !interactive);
+            listing.Gap(SettingsCheckboxRowGap);
+        }
+
+        /// <summary>
+        /// Draws one highlight-color gradient. The slider does not move when the row is inactive.
+        ///
+        /// Рисует одну разноцветную полосу. Ползунок не сдвигается, пока строка неактивна.
+        /// </summary>
+        private static void DrawHighlightColorSlider(Listing_Standard listing, ref float position, Color thumbColor,
+            bool interactive)
+        {
+            Rect gradientRect = listing.GetRect(24f);
+            BlockDisabledSettingsRowInput(gradientRect, !interactive);
+            LimitHighlight.DrawGradient(gradientRect);
+            if (interactive)
+            {
+                position = Widgets.HorizontalSlider(gradientRect, position, 0f, 1f, false, null, null, null, -1f);
+            }
+
+            if (Event.current.type == EventType.Repaint)
+            {
+                LimitHighlight.DrawGradient(gradientRect);
+                float thumbX = gradientRect.x + gradientRect.width * position;
+                Rect thumb = new Rect(thumbX - 3f, gradientRect.y - 2f, 6f, gradientRect.height + 4f);
+                GUI.color = thumbColor;
+                GUI.DrawTexture(thumb, BaseContent.WhiteTex);
+                GUI.color = Color.black;
+                Widgets.DrawBox(thumb, 1);
+                GUI.color = Color.white;
+            }
+
+            DrawDisabledSettingsRowVeil(gradientRect, !interactive);
+        }
+
+        /// <summary>
         /// Resets the modified-limit highlight color slider to its default position.
+        ///
+        /// Возвращает ползунок цвета изменённых лимитов в положение по умолчанию.
         /// </summary>
         private static void ResetHighlightColor()
         {
             HighlightColorPosition = DefaultHighlightColorPosition;
+        }
+
+        /// <summary>
+        /// Resets the raised-limit highlight color slider to the blue opposite of the default modified-limit color.
+        ///
+        /// Возвращает ползунок цвета повышенного лимита к синему, противоположному цвету изменённых лимитов по умолчанию.
+        /// </summary>
+        private static void ResetRaisedLimitHighlightColor()
+        {
+            RaisedLimitHighlightColorPosition = DefaultRaisedLimitHighlightColorPosition;
         }
 
         /// <summary>
@@ -1072,6 +1192,8 @@ namespace HSKKebabLimits
             }
 
             DrawSettingsRowSeparator(listing, viewWidth);
+            DrawSeparateRaisedLimitColorRow(listing);
+            DrawSettingsRowSeparator(listing, viewWidth);
             DrawDisplayLogFactorRow(listing);
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawMaxStackSliderLimitRow(listing);
@@ -1083,34 +1205,26 @@ namespace HSKKebabLimits
             Rect previewRect = listing.GetRect(28f);
             Widgets.FloatRange(previewRect, 182356235, ref previewRange, 0f, 1f,
                 StockpileFilterSliderRow.FormatLimitLabel(previewRange.min, previewRange.max), ToStringStyle.Integer, 0f,
-                GameFont.Tiny);
+                GameFont.Tiny, Color.white);
             LimitHighlight.DrawRangeBarOverlay(previewRect, previewRange);
             DisplayLogExample = previewRange;
             Text.Font = GameFont.Tiny;
             Text.Anchor = TextAnchor.UpperCenter;
-            GUI.color = Color.grey;
+            GUI.color = Color.white;
             listing.Label("DisplayLogFactorExampleNote".Translate());
             GUI.color = previousColor;
             Text.Anchor = TextAnchor.UpperLeft;
             Text.Font = GameFont.Small;
 
-            listing.Gap(PreviewToHighlightColorGap);
+            DrawSettingsRowSeparator(listing, viewWidth);
             DrawModifiedHighlightColorHeader(listing);
-            Rect gradientRect = listing.GetRect(24f);
-            LimitHighlight.DrawGradient(gradientRect);
-            HighlightColorPosition = Widgets.HorizontalSlider(gradientRect, HighlightColorPosition, 0f, 1f, false,
-                null, null, null, -1f);
-            if (Event.current.type == EventType.Repaint)
-            {
-                LimitHighlight.DrawGradient(gradientRect);
-                float thumbX = gradientRect.x + gradientRect.width * HighlightColorPosition;
-                Rect thumb = new Rect(thumbX - 3f, gradientRect.y - 2f, 6f, gradientRect.height + 4f);
-                GUI.color = HighlightColor;
-                GUI.DrawTexture(thumb, BaseContent.WhiteTex);
-                GUI.color = Color.black;
-                Widgets.DrawBox(thumb, 1);
-                GUI.color = previousColor;
-            }
+            DrawHighlightColorSlider(listing, ref HighlightColorPosition, HighlightColor, interactive: true);
+            listing.Gap((SettingsCheckboxRowHeight - Text.LineHeight) * 0.5f);
+            DrawSettingsRowSeparator(listing, viewWidth);
+            bool raisedColorInteractive = AllowPerItemAboveSlider && SeparateRaisedLimitHighlightColor;
+            DrawRaisedLimitHighlightColorHeader(listing, raisedColorInteractive);
+            DrawHighlightColorSlider(listing, ref RaisedLimitHighlightColorPosition,
+                LimitHighlight.SampleColor(RaisedLimitHighlightColorPosition), raisedColorInteractive);
 
             listing.Gap(24f);
             if (Widgets.ButtonText(listing.GetRect(28f), "PressIfStackSizeChangedRuntime".Translate()))
@@ -1147,6 +1261,8 @@ namespace HSKKebabLimits
                 forceSave: true);
             Scribe_Values.Look(ref AllowPerItemAboveSlider, "AllowPerItemAboveSlider", defaultValue: false,
                 forceSave: true);
+            Scribe_Values.Look(ref SeparateRaisedLimitHighlightColor, "SeparateRaisedLimitHighlightColor",
+                defaultValue: false, forceSave: true);
             Scribe_Values.Look(ref AddFilterDisplaySettings, "AddFilterDisplaySettings", defaultValue: false,
                 forceSave: true);
             if (Scribe.mode == LoadSaveMode.Saving)
@@ -1178,6 +1294,8 @@ namespace HSKKebabLimits
             Scribe_Values.Look(ref DelayedZoneEjectHours, "DelayedZoneEjectHours", DefaultDelayedZoneEjectHours);
             Scribe_Values.Look(ref MaxStackSliderLimit, "MaxStackSliderLimit", DefaultMaxStackSliderLimit);
             Scribe_Values.Look(ref HighlightColorPosition, "HighlightColorPosition", DefaultHighlightColorPosition);
+            Scribe_Values.Look(ref RaisedLimitHighlightColorPosition, "RaisedLimitHighlightColorPosition",
+                DefaultRaisedLimitHighlightColorPosition);
         }
     }
 }

@@ -296,7 +296,7 @@ namespace HSKKebabLimits
                 }
 
                 Text.Anchor = TextAnchor.MiddleLeft;
-                GUI.color = spec ? LimitHighlight.GetColor() : Color.yellow;
+                GUI.color = LimitHighlight.ColorForFilterLimit(spec, displayLimit, sliderDefault);
                 Widgets.Label(row,
                     GenText.Truncate("~" + label, row.width - textSize.x, (Dictionary<string, string>)null));
             }
