@@ -8,6 +8,8 @@ namespace HSKKebabLimits
 {
     /// <summary>
     /// Main RimWorld mod entry for HSK kebab limits: applies Harmony patches and exposes mod settings.
+    ///
+    /// Точка входа мода HSK kebab limits: ставит Harmony-патчи и открывает настройки.
     /// </summary>
     public class KebabLimitsMod : Mod
     {
@@ -16,12 +18,24 @@ namespace HSKKebabLimits
         public static Harmony HarmonyInstance;
 
         /// <summary>
-        /// Initializes Harmony, applies storage-limit patches, and loads mod settings on startup.
+        /// Loads mod settings, then applies storage-limit patches unless a blocking mod is active.
+        ///
+        /// Загружает настройки, затем ставит патчи лимитов, если блокирующий мод не включён.
         /// </summary>
         public KebabLimitsMod(ModContentPack content)
             : base(content)
         {
             settings = GetSettings<KebabLimitsModSettings>();
+            if (IncompatibleModBlock.TryFindActive(out string blockingMods))
+            {
+                Log.Error(
+                    "[HSK kebab limits] Incompatible with " + blockingMods +
+                    ". Disable those mods and restart.\n" +
+                    "[HSK kebab limits] Несовместим с " + blockingMods +
+                    ". Отключите эти моды и перезапустите игру.");
+                return;
+            }
+
             HarmonyInstance = new Harmony("kebabebak.hsk.kebab.limits");
             KebabLimitsLog.Message("[HSK kebab limits] Initializing mod class.");
 

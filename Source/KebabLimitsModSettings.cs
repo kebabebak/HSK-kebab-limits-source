@@ -316,13 +316,15 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws the slider scale modifier row with a tooltip label and numeric input field.
+        /// Draws the slider scale modifier row. The tooltip highlight fills the row up to the numeric field.
+        ///
+        /// Рисует строку модификатора шкалы. Подсветка тултипа заполняет строку до числового поля.
         /// </summary>
         private void DrawDisplayLogFactorRow(Listing_Standard listing)
         {
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
-            Rect labelRect = row.LeftHalf();
             Rect fieldRect = CalcNumericFieldRect(row, row.RightHalf());
+            Rect labelRect = new Rect(row.x, row.y, Mathf.Max(0f, fieldRect.x - row.x), row.height);
             string label = "DisplayLogFactor".Translate();
             string tooltip = "DisplayLogFactorInfo".Translate();
 
