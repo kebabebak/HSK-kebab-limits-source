@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using Verse;
 
@@ -175,14 +176,64 @@ namespace HSKKebabLimits
             listing.Gap(SettingsCheckboxRowGap);
         }
 
+        static readonly List<Rect> alwaysInteractiveRects = new List<Rect>();
+
         /// <summary>
-        /// Marks mouse events used on a veiled settings row. CheckboxLabeled still toggles after this, so a veiled checkbox must also be drawn disabled.
+        /// Drops magnifier and copy rects from the previous Repaint before this one records new ones.
         ///
-        /// Помечает события мыши на затемнённой строке использованными. CheckboxLabeled после этого всё равно переключается, поэтому затемнённый чекбокс нужно рисовать недоступным.
+        /// Сбрасывает прямоугольники лупы и копирования с прошлого Repaint перед записью новых.
+        /// </summary>
+        private static void ClearAlwaysInteractiveRects()
+        {
+            if (Event.current.type == EventType.Repaint)
+            {
+                alwaysInteractiveRects.Clear();
+            }
+        }
+
+        /// <summary>
+        /// Remembers a magnifier or copy rect. Those buttons stay clickable under a veil.
+        ///
+        /// Запоминает прямоугольник лупы или копирования. Эти кнопки остаются кликабельными под пеленой.
+        /// </summary>
+        private static void NoteAlwaysInteractiveRect(Rect rect)
+        {
+            if (Event.current.type != EventType.Repaint || rect.width <= 0.5f || rect.height <= 0.5f)
+            {
+                return;
+            }
+
+            alwaysInteractiveRects.Add(rect);
+        }
+
+        static bool MouseOverAlwaysInteractiveRect()
+        {
+            for (int i = 0; i < alwaysInteractiveRects.Count; i++)
+            {
+                if (Mouse.IsOver(alwaysInteractiveRects[i]))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Veil and input block are one contract: a veiled rect does not take clicks, and a
+        /// non-interactive rect is veiled. Only MouseDown, MouseUp, and MouseDrag are consumed,
+        /// so TipRegion tooltips still work. Magnifier and copy rects noted on Repaint stay clickable.
+        /// CheckboxLabeled still toggles after the event is used, so a veiled checkbox is also drawn disabled.
+        ///
+        /// Затемнение и блок ввода - одна связка: затемнённый прямоугольник не принимает клики,
+        /// а невосприимчивый прямоугольник затемнён. Поглощаются только MouseDown, MouseUp и
+        /// MouseDrag, поэтому тултипы TipRegion работают. Прямоугольники лупы и копирования,
+        /// отмеченные на Repaint, остаются кликабельными.
+        /// CheckboxLabeled после поглощения события всё равно переключается, поэтому затемнённый чекбокс рисуется недоступным.
         /// </summary>
         private static void BlockDisabledSettingsRowInput(Rect row, bool disabled)
         {
-            if (!disabled || !Mouse.IsOver(row))
+            if (!disabled || !Mouse.IsOver(row) || MouseOverAlwaysInteractiveRect())
             {
                 return;
             }
@@ -196,9 +247,9 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws a semi-transparent dark veil over an inactive settings row.
+        /// Visual half of the veil and input-block contract. Does not consume mouse events.
         ///
-        /// Рисует полупрозрачную тёмную пелену поверх неактивной строки настроек.
+        /// Визуальная половина связки затемнения и блока ввода. События мыши не поглощает.
         /// </summary>
         private static void DrawDisabledSettingsRowVeil(Rect row, bool disabled)
         {
@@ -695,9 +746,9 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws the delayed hard-ejection hours row: numeric field plus enable checkbox.
+        /// Draws the delayed hard-ejection hours row. The numeric field stays when hard ejection is off, so the number does not move.
         ///
-        /// Рисует строку отложенного принудительного сброса: поле часов и чекбокс включения.
+        /// Рисует строку отложенного принудительного сброса. Поле часов остаётся, когда принудительный сброс выключен, поэтому число не сдвигается.
         /// </summary>
         private void DrawDelayHardEjectionRow(Listing_Standard listing)
         {
@@ -739,11 +790,19 @@ namespace HSKKebabLimits
                 DrawNonDefaultTextUnderline(labelRect, label, TextAnchor.MiddleLeft);
             }
 
+            int previousHours = DelayHardEjectionHours;
+            string previousBuffer = DelayHardEjectionHours_Buffer;
+            bool guiWasEnabled = GUI.enabled;
+            if (!interactive)
+            {
+                GUI.enabled = false;
+            }
+
+            Widgets.TextFieldNumeric(fieldRect, ref DelayHardEjectionHours, ref DelayHardEjectionHours_Buffer,
+                DelayHardEjectionHoursMin, DelayHardEjectionHoursMax);
+            GUI.enabled = guiWasEnabled;
             if (interactive)
             {
-                int previousHours = DelayHardEjectionHours;
-                Widgets.TextFieldNumeric(fieldRect, ref DelayHardEjectionHours, ref DelayHardEjectionHours_Buffer,
-                    DelayHardEjectionHoursMin, DelayHardEjectionHoursMax);
                 ClampDelayHardEjectionHoursInput();
                 if (previousHours != DelayHardEjectionHours)
                 {
@@ -763,9 +822,8 @@ namespace HSKKebabLimits
             }
             else
             {
-                Text.Anchor = TextAnchor.MiddleCenter;
-                Widgets.Label(fieldRect, DelayHardEjectionHours.ToString());
-                Text.Anchor = previousAnchor;
+                DelayHardEjectionHours = previousHours;
+                DelayHardEjectionHours_Buffer = previousBuffer;
                 GUI.DrawTexture(checkboxRect,
                     DelayHardEjectionAfterLimitChange ? Widgets.CheckboxOnTex : Widgets.CheckboxOffTex);
             }
@@ -976,7 +1034,11 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws one selectable hour preset for delayed overflow ejection.
+        /// Draws one selectable hour preset for delayed overflow ejection. The font steps
+        /// down until the digits fit inside the square.
+        ///
+        /// Рисует одну кнопку часов для отложенного сброса. Шрифт уменьшается, пока цифры
+        /// не помещаются в квадрат.
         /// </summary>
         private void DrawDelayedZoneEjectDigit(Rect rect, int hours)
         {
@@ -1004,14 +1066,27 @@ namespace HSKKebabLimits
             GameFont previousFont = Text.Font;
             TextAnchor previousAnchor = Text.Anchor;
             Color previousColor = GUI.color;
-            Text.Font = GameFont.Medium;
-            GUIStyle labelStyle = new GUIStyle(Text.CurFontStyle)
+            string text = hours.ToString();
+            GameFont[] fonts = { GameFont.Medium, GameFont.Small, GameFont.Tiny };
+            GUIStyle labelStyle = null;
+            float innerWidth = rect.width - 4f;
+            for (int i = 0; i < fonts.Length; i++)
             {
-                alignment = TextAnchor.MiddleCenter,
-                fontStyle = FontStyle.Bold
-            };
+                Text.Font = fonts[i];
+                labelStyle = new GUIStyle(Text.CurFontStyle)
+                {
+                    alignment = TextAnchor.MiddleCenter,
+                    fontStyle = FontStyle.Bold,
+                    clipping = TextClipping.Clip
+                };
+                if (i == fonts.Length - 1 || labelStyle.CalcSize(new GUIContent(text)).x <= innerWidth)
+                {
+                    break;
+                }
+            }
+
             GUI.color = digitColor;
-            GUI.Label(rect, hours.ToString(), labelStyle);
+            GUI.Label(rect, text, labelStyle);
             GUI.color = previousColor;
             Text.Anchor = previousAnchor;
             Text.Font = previousFont;
@@ -1133,6 +1208,7 @@ namespace HSKKebabLimits
         /// </summary>
         public void DrawSettings(Rect inRect)
         {
+            ClearAlwaysInteractiveRects();
             float viewWidth = inRect.width - SettingsScrollBarWidth;
             float scrollHeight = Mathf.Max(settingsScrollContentHeight, inRect.height);
             Rect viewRect = new Rect(0f, 0f, viewWidth, scrollHeight);
@@ -1155,7 +1231,7 @@ namespace HSKKebabLimits
                 defaultValue: true, "EnableSimilarStackLimitsTooltip".Translate());
             if (!similarBefore && GlobalSimilarStackEnabled)
             {
-                // Profiles with SimilarStackCountRaw=-1 become storage-wide again — clamp overrides.
+                // Profiles with SimilarStackCountRaw=-1 become storage-wide again - clamp overrides.
                 StockpileProfileStore.ClampAllProfilesToModeCap();
             }
 

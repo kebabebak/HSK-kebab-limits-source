@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using HarmonyLib;
-using Multiplayer.API;
 using RimWorld;
 using Verse;
 
@@ -27,7 +26,6 @@ namespace HSKKebabLimits
             }
         }
 
-        [SyncField(SyncContext.None)]
         private static readonly Dictionary<StorageSettings, StockpileLimitBundle> Remapper =
             new Dictionary<StorageSettings, StockpileLimitBundle>();
 
@@ -108,7 +106,6 @@ namespace HSKKebabLimits
         /// <summary>
         /// Stores an updated limit profile for a stockpile's storage settings.
         /// </summary>
-        [SyncMethod(SyncContext.None)]
         public static void Set(StorageSettings settings, StockpileLimitBundle value)
         {
             if (value != null)

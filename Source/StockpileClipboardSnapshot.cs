@@ -4,7 +4,9 @@ using RimWorld;
 namespace HSKKebabLimits
 {
     /// <summary>
-    /// Harmony prefix on vanilla storage clipboard copy — snapshots the HSK limit profile alongside filter settings.
+    /// Harmony prefix on vanilla storage clipboard copy - snapshots the HSK limit profile alongside filter settings.
+    ///
+    /// Harmony Prefix на ванильное копирование настроек склада - сохраняет профиль лимита рядом с фильтром.
     /// </summary>
     [HarmonyPatch(typeof(StorageSettingsClipboard), "Copy")]
     public static class StockpileClipboardSnapshot

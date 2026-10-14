@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
-using Multiplayer.API;
 using RimWorld;
 using Verse;
 using Verse.AI;
@@ -35,7 +34,6 @@ namespace HSKKebabLimits
         }
 
         /// <summary>Recalculates haulables and ejects overflow after storage settings change on a zone or building.</summary>
-        [SyncMethod(SyncContext.None)]
         public static void ReconcileOverflowAfterLimitChange(IStoreSettingsParent storeSettingsParent, StockpileLimitBundle profile)
         {
             if (storeSettingsParent == null || profile == null)

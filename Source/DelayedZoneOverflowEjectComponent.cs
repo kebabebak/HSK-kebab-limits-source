@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.Linq;
-using Multiplayer.API;
 using RimWorld;
 using Verse;
 
@@ -82,7 +81,6 @@ namespace HSKKebabLimits
         ///
         /// Ставит отложенный принудительный сброс после смены лимита склада. Одна задача на зону или здание; повторное изменение сбрасывает таймер.
         /// </summary>
-        [SyncMethod(SyncContext.None)]
         public static void ScheduleAfterLimitChange(IStoreSettingsParent parent)
         {
             if (parent == null || !KebabLimitsModSettings.EnableHardEjection ||

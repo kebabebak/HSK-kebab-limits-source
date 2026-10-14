@@ -25,9 +25,9 @@ namespace HSKKebabLimits
         private static MethodInfo readFieldMethod;
 
         /// <summary>
-        /// Harmony postfix on KV IOUtil.SaveStorageSettings — appends kebab limits fields to the preset file.
+        /// Harmony postfix on KV IOUtil.SaveStorageSettings - appends kebab limits fields to the preset file.
         ///
-        /// Postfix Harmony на KV IOUtil.SaveStorageSettings — дописывает поля kebab limits в файл пресета.
+        /// Postfix Harmony на KV IOUtil.SaveStorageSettings - дописывает поля kebab limits в файл пресета.
         /// </summary>
         [HarmonyPatch]
         internal static class SaveStorageSettingsPostfix
@@ -85,9 +85,9 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Harmony postfix on KV IOUtil.LoadFilters — restores kebab limits fields from the preset file.
+        /// Harmony postfix on KV IOUtil.LoadFilters - restores kebab limits fields from the preset file.
         ///
-        /// Postfix Harmony на KV IOUtil.LoadFilters — восстанавливает поля kebab limits из файла пресета.
+        /// Postfix Harmony на KV IOUtil.LoadFilters - восстанавливает поля kebab limits из файла пресета.
         /// </summary>
         [HarmonyPatch]
         internal static class LoadFiltersPostfix

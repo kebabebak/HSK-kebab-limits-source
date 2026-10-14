@@ -6,7 +6,6 @@ Files to compile `HSKKebabLimits.dll` for RimWorld HSK 1.5 / 1.6.
 
 - [.NET SDK](https://dotnet.microsoft.com/download) (builds `net472` for 1.5, `net48` for 1.6)
 - Harmony and RimWorld refs from NuGet (`Lib.Harmony`, `Krafs.Rimworld.Ref`)
-- Place Multiplayer API assembly at `libs\0MultiplayerAPI.dll` (compile-time reference; soft at runtime)
 
 ## Build
 

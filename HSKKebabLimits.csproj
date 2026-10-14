@@ -27,11 +27,4 @@
     <PackageReference Include="Krafs.Rimworld.Ref" Version="$(KrafsRimworldRefVersion)" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Reference Include="0MultiplayerAPI">
-      <HintPath>libs\0MultiplayerAPI.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-
 </Project>

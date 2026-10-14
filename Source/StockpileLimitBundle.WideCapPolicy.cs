@@ -10,7 +10,10 @@ namespace HSKKebabLimits
 
         /// <summary>
         /// True when storage-wide mode enforces a warehouse total cap (upper slider below default).
-        /// At max slider (e.g. 0–2000 with both handles at 2000) there is no total cap — same as EnforcesUpperBound.
+        /// At max slider (e.g. 0-2000 with both handles at 2000) there is no total cap - same as EnforcesUpperBound.
+        ///
+        /// Истина, когда режим на весь склад задаёт общий потолок (верхний ползунок ниже значения по умолчанию).
+        /// На максимуме ползунка (например 0-2000, оба конца на 2000) общего потолка нет - как у EnforcesUpperBound.
         /// </summary>
         public bool AppliesStorageWideTotalCap =>
             UsesStorageWideLimitFromLimitFor && allowedLimitPercents.max < 0.999f;

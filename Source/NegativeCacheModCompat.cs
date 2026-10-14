@@ -45,8 +45,11 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// LWM Deep Storage postfix hooks on Building_Storage notify — fires on internal store/eject
+        /// LWM Deep Storage postfix hooks on Building_Storage notify - fires on internal store/eject
         /// after vanilla notify chain.
+        ///
+        /// Postfix LWM Deep Storage на notify Building_Storage - срабатывает на внутреннем store/eject
+        /// после ванильной цепочки notify.
         /// </summary>
         [HarmonyPatch(typeof(Building_Storage), nameof(Building_Storage.Notify_ReceivedThing))]
         internal static class DeepStorageBuildingReceivedThingPatch

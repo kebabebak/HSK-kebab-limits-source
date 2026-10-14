@@ -122,9 +122,13 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Postfix on PUAH CapacityAt — clamps batch capacity via Solve when kebab limits limits apply.
+        /// Postfix on PUAH CapacityAt - clamps batch capacity via Solve when kebab limits limits apply.
         /// Must not zero capacity for every limited storage (that disabled PUAH inventory haul entirely);
         /// clamp via Solve and keep countQueue prune / carry-check so inventory haul still works safely.
+        ///
+        /// Postfix на PUAH CapacityAt - ограничивает размер партии через Solve, когда действуют лимиты.
+        /// Нельзя обнулять вместимость каждого ограниченного склада (это полностью отключало переноску PUAH);
+        /// ограничение через Solve, плюс prune countQueue и проверка переноски, чтобы переноска в инвентарь оставалась рабочей.
         /// </summary>
         public static void CapacityAtPostfix(ref int __result, Thing thing, IntVec3 storeCell, Map map)
         {

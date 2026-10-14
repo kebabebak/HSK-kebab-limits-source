@@ -10,7 +10,11 @@ namespace HSKKebabLimits
     [HarmonyPatch(typeof(StorageSettings), "ExposeData")]
     public static class StockpileProfileSaveHook
     {
-        /// <summary>Scribe_Deep hook — saves/loads limit profile bound to this storage settings instance.</summary>
+        /// <summary>
+        /// Scribe_Deep hook - saves and loads the limit profile bound to this storage settings instance.
+        ///
+        /// Хук Scribe_Deep - сохраняет и загружает профиль лимита, привязанный к этим настройкам склада.
+        /// </summary>
         [HarmonyPostfix]
         public static void ExposeData(StorageSettings __instance)
         {

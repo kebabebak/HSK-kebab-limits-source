@@ -19,7 +19,7 @@ namespace HSKKebabLimits
         /// <summary>
         /// Draws text clipped to rect. Fits statically; overflow ping-pongs only during hover on hoverRect.
         ///
-        /// Рисует текст с обрезкой по прямоугольнику. Если влезает — статично; иначе ping-pong только при наведении на hoverRect.
+        /// Рисует текст с обрезкой по прямоугольнику. Если влезает - статично; иначе ping-pong только при наведении на hoverRect.
         /// </summary>
         public static void Draw(Rect rect, string text, Rect hoverRect)
         {

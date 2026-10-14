@@ -1,5 +1,4 @@
 using System;
-using Multiplayer.API;
 using Verse;
 
 namespace HSKKebabLimits
@@ -92,17 +91,5 @@ namespace HSKKebabLimits
             categoryLimits.Clear();
         }
 
-        /// <summary>
-        /// Synchronizes limit profile fields across multiplayer clients.
-        /// </summary>
-        [SyncWorker]
-        public static void SyncStockpileLimitBundle(SyncWorker sync, ref StockpileLimitBundle data)
-        {
-            sync.Bind(ref data.allowedLimitPercents);
-            sync.Bind(ref data.allowedMultistack);
-            sync.Bind(ref data.expandFilterCategories);
-            sync.Bind(ref data.allowedSimilarStackCount);
-            sync.Bind(ref data.filterListDisplayMode);
-        }
     }
 }
