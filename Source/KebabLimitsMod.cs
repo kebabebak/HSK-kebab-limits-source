@@ -26,6 +26,15 @@ namespace HSKKebabLimits
             : base(content)
         {
             settings = GetSettings<KebabLimitsModSettings>();
+            try
+            {
+                SettingsAudit.Publish();
+            }
+            catch (Exception auditEx)
+            {
+                Log.Error("[HSK kebab limits] Settings audit failed: " + auditEx);
+            }
+
             if (IncompatibleModBlock.TryFindActive(out string blockingMods))
             {
                 Log.Error(
@@ -33,10 +42,27 @@ namespace HSKKebabLimits
                     ". Disable those mods and restart.\n" +
                     "[HSK kebab limits] Несовместим с " + blockingMods +
                     ". Отключите эти моды и перезапустите игру.");
+                try
+                {
+                    SettingsAudit.Install(new Harmony("kebabebak.hsk.kebab.limits"));
+                }
+                catch (Exception auditEx)
+                {
+                    Log.Error("[HSK kebab limits] Settings audit poller failed: " + auditEx);
+                }
+
                 return;
             }
 
             HarmonyInstance = new Harmony("kebabebak.hsk.kebab.limits");
+            try
+            {
+                SettingsAudit.Install(HarmonyInstance);
+            }
+            catch (Exception auditEx)
+            {
+                Log.Error("[HSK kebab limits] Settings audit poller failed: " + auditEx);
+            }
             KebabLimitsLog.Message("[HSK kebab limits] Initializing mod class.");
 
             try
@@ -136,10 +162,12 @@ namespace HSKKebabLimits
         }
     }
 
-    // All HSK kebab limits logging routes through here so it only reaches Player.log when the
-    // "EnableLogging" mod setting is on.
     /// <summary>
-    /// Gated logging helper that respects the mod's EnableLogging setting and caps verbose spam.
+    /// Gated diagnostic log. Writes only when Enable logging is on, and caps routine lines.
+    /// SettingsAudit does not use this helper.
+    ///
+    /// Диагностический лог. Пишет только при включённом логировании и режет обычные строки.
+    /// SettingsAudit этот помощник не использует.
     /// </summary>
     public static class KebabLimitsLog
     {
