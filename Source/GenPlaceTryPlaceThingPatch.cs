@@ -36,13 +36,7 @@ namespace HSKKebabLimits
                 targetMethods.Add(method);
             }
 
-            if (targetMethods.Count > 0)
-            {
-                return true;
-            }
-
-            Log.Error("[HSK kebab limits] Could not find GenPlace.TryPlaceThing.");
-            return false;
+            return targetMethods.Count > 0;
         }
 
         /// <summary>Targets every GenPlace.TryPlaceThing overload (1.5 Rot4 and 1.6 Nullable&lt;Rot4&gt; + int).</summary>

@@ -151,29 +151,56 @@ namespace HSKKebabLimits
         }
 
         /// <summary>
-        /// Draws a labeled checkbox row with an optional tooltip in mod settings.
+        /// Draws a labeled checkbox row. A missing dependency veils the whole row and ignores clicks.
+        ///
+        /// Рисует строку с подписью и галочкой. Нет зависимости - вся строка затемнена и не принимает клики.
         /// </summary>
         private static void DrawSettingsCheckboxRow(Listing_Standard listing, string label, ref bool value,
-            bool defaultValue, string tooltip = null)
+            bool defaultValue, string tooltip = null, bool dependencyAvailable = true)
         {
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
-            if (!tooltip.NullOrEmpty())
+            BlockDisabledSettingsRowInput(row, !dependencyAvailable);
+            string tip = MissingDependencyTip(tooltip, dependencyAvailable);
+            if (!tip.NullOrEmpty())
             {
-                if (Mouse.IsOver(row))
+                if (dependencyAvailable && Mouse.IsOver(row))
                 {
                     Widgets.DrawHighlight(row);
                 }
 
-                TooltipHandler.TipRegion(row, tooltip);
+                TooltipHandler.TipRegion(row, tip);
             }
 
-            Widgets.CheckboxLabeled(row, label, ref value);
+            bool shown = value;
+            Widgets.CheckboxLabeled(row, label, ref shown, disabled: !dependencyAvailable);
+            if (dependencyAvailable)
+            {
+                value = shown;
+            }
+
             if (value != defaultValue)
             {
                 DrawNonDefaultTextUnderline(row, label, TextAnchor.MiddleLeft);
             }
 
+            DrawDisabledSettingsRowVeil(row, !dependencyAvailable);
             listing.Gap(SettingsCheckboxRowGap);
+        }
+
+        /// <summary>
+        /// Prefixes a settings tooltip when the control's game member was not found.
+        ///
+        /// Дописывает тултип настройки, если её член игры не найден.
+        /// </summary>
+        private static string MissingDependencyTip(string tooltip, bool dependencyAvailable)
+        {
+            if (dependencyAvailable)
+            {
+                return tooltip;
+            }
+
+            string missing = "KebabLimits.MissingDependenciesTooltip".Translate();
+            return tooltip.NullOrEmpty() ? missing : missing + "\n\n" + tooltip;
         }
 
         static readonly List<Rect> alwaysInteractiveRects = new List<Rect>();
@@ -305,11 +332,6 @@ namespace HSKKebabLimits
             return !Mathf.Approximately(value, defaultValue);
         }
 
-        /// <summary>
-        /// Returns a compact right-aligned numeric field rect matching kebab tweaks body rows.
-        ///
-        /// Возвращает компактное числовое поле справа в стиле body-строк kebab tweaks.
-        /// </summary>
         private static Rect CalcNumericFieldRect(Rect row, Rect rightHalf)
         {
             float fieldWidth = rightHalf.width * NumericFieldWidthFraction;
@@ -373,20 +395,22 @@ namespace HSKKebabLimits
         /// </summary>
         private void DrawDisplayLogFactorRow(Listing_Standard listing)
         {
+            bool available = !LimitsAvailability.IsBlocked(LimitsAvailability.Slider);
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !available);
             Rect fieldRect = CalcNumericFieldRect(row, row.RightHalf());
             Rect labelRect = new Rect(row.x, row.y, Mathf.Max(0f, fieldRect.x - row.x), row.height);
             string label = "DisplayLogFactor".Translate();
-            string tooltip = "DisplayLogFactorInfo".Translate();
+            string tooltip = MissingDependencyTip("DisplayLogFactorInfo".Translate(), available);
 
             if (!tooltip.NullOrEmpty())
             {
-                if (Mouse.IsOver(labelRect))
+                if (available && Mouse.IsOver(labelRect))
                 {
                     Widgets.DrawHighlight(labelRect);
                 }
 
-                TooltipHandler.TipRegion(labelRect, tooltip);
+                TooltipHandler.TipRegion(available ? labelRect : row, tooltip);
             }
 
             TextAnchor previousAnchor = Text.Anchor;
@@ -400,8 +424,25 @@ namespace HSKKebabLimits
             }
 
             float previous = DisplayLogFactor;
+            string previousBuffer = DisplayLogFactor_Buffer;
+            bool guiWasEnabled = GUI.enabled;
+            if (!available)
+            {
+                GUI.enabled = false;
+            }
+
             Widgets.TextFieldNumeric(fieldRect, ref DisplayLogFactor, ref DisplayLogFactor_Buffer,
                 DisplayLogFactorMin, DisplayLogFactorMax);
+            GUI.enabled = guiWasEnabled;
+            if (!available)
+            {
+                DisplayLogFactor = previous;
+                DisplayLogFactor_Buffer = previousBuffer;
+                DrawDisabledSettingsRowVeil(row, true);
+                listing.Gap(SettingsCheckboxRowGap);
+                return;
+            }
+
             if (DisplayLogFactor < DisplayLogFactorMin)
             {
                 DisplayLogFactor = DisplayLogFactorMin;
@@ -425,7 +466,14 @@ namespace HSKKebabLimits
         /// </summary>
         private void DrawMaxStackSliderLimitRow(Listing_Standard listing)
         {
+            bool available = !LimitsAvailability.IsBlocked(LimitsAvailability.Slider);
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !available);
+            if (!available)
+            {
+                TooltipHandler.TipRegion(row, "KebabLimits.MissingDependenciesTooltip".Translate());
+            }
+
             Rect labelRect = row.LeftHalf();
             Rect fieldRect = CalcNumericFieldRect(row, row.RightHalf());
             string label = "LimitSliderMaxValue".Translate();
@@ -441,8 +489,25 @@ namespace HSKKebabLimits
             }
 
             int previousMax = MaxStackSliderLimit;
+            string previousBuffer = MaxStackSliderLimit_Buffer;
+            bool guiWasEnabled = GUI.enabled;
+            if (!available)
+            {
+                GUI.enabled = false;
+            }
+
             Widgets.TextFieldNumeric(fieldRect, ref MaxStackSliderLimit, ref MaxStackSliderLimit_Buffer, 0f,
                 MaxStackSliderLimitMax);
+            GUI.enabled = guiWasEnabled;
+            if (!available)
+            {
+                MaxStackSliderLimit = previousMax;
+                MaxStackSliderLimit_Buffer = previousBuffer;
+                DrawDisabledSettingsRowVeil(row, true);
+                listing.Gap(SettingsCheckboxRowGap);
+                return;
+            }
+
             ClampMaxStackSliderLimitInput();
 
             if (previousMax != MaxStackSliderLimit)
@@ -456,9 +521,15 @@ namespace HSKKebabLimits
         /// <summary>
         /// Draws the modified-limit highlight color label with a per-setting reset button.
         /// </summary>
-        private void DrawModifiedHighlightColorHeader(Listing_Standard listing)
+        private void DrawModifiedHighlightColorHeader(Listing_Standard listing, bool available)
         {
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !available);
+            if (!available)
+            {
+                TooltipHandler.TipRegion(row, "KebabLimits.MissingDependenciesTooltip".Translate());
+            }
+
             string label = "ModifiedHighlightColorLabel".Translate();
             Rect resetRect = new Rect(
                 row.xMax - SettingResetButtonWidth,
@@ -478,7 +549,17 @@ namespace HSKKebabLimits
                 DrawNonDefaultTextUnderline(labelRect, label, TextAnchor.MiddleLeft);
             }
 
-            DrawSettingResetButton(resetRect, label, ResetHighlightColor);
+            if (available)
+            {
+                DrawSettingResetButton(resetRect, label, ResetHighlightColor);
+            }
+            else
+            {
+                Widgets.ButtonText(resetRect, "ResetSetting".Translate(), drawBackground: true,
+                    doMouseoverSound: false, active: false);
+            }
+
+            DrawDisabledSettingsRowVeil(row, !available);
             listing.Gap(SettingsCheckboxRowGap);
         }
 
@@ -491,6 +572,12 @@ namespace HSKKebabLimits
         {
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
             BlockDisabledSettingsRowInput(row, !interactive);
+            if (LimitsAvailability.IsBlocked(LimitsAvailability.Slider)
+                || LimitsAvailability.IsBlocked(LimitsAvailability.PerItem))
+            {
+                TooltipHandler.TipRegion(row, "KebabLimits.MissingDependenciesTooltip".Translate());
+            }
+
             string label = "RaisedLimitHighlightColorLabel".Translate();
             Rect resetRect = new Rect(
                 row.xMax - SettingResetButtonWidth,
@@ -530,11 +617,14 @@ namespace HSKKebabLimits
         /// </summary>
         private void DrawSeparateRaisedLimitColorRow(Listing_Standard listing)
         {
-            bool interactive = AllowPerItemAboveSlider;
+            bool dependencyAvailable = !LimitsAvailability.IsBlocked(LimitsAvailability.PerItem);
+            bool interactive = AllowPerItemAboveSlider && dependencyAvailable;
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
             BlockDisabledSettingsRowInput(row, !interactive);
             string label = "SeparateRaisedLimitHighlightColor".Translate();
-            string tooltip = "SeparateRaisedLimitHighlightColorTooltip".Translate();
+            string tooltip = MissingDependencyTip(
+                "SeparateRaisedLimitHighlightColorTooltip".Translate(),
+                dependencyAvailable);
             if (!tooltip.NullOrEmpty())
             {
                 if (interactive && Mouse.IsOver(row))
@@ -561,10 +651,14 @@ namespace HSKKebabLimits
         /// Рисует одну разноцветную полосу. Ползунок не сдвигается, пока строка неактивна.
         /// </summary>
         private static void DrawHighlightColorSlider(Listing_Standard listing, ref float position, Color thumbColor,
-            bool interactive)
+            bool interactive, bool missingDependency = false)
         {
             Rect gradientRect = listing.GetRect(24f);
             BlockDisabledSettingsRowInput(gradientRect, !interactive);
+            if (missingDependency)
+            {
+                TooltipHandler.TipRegion(gradientRect, "KebabLimits.MissingDependenciesTooltip".Translate());
+            }
             LimitHighlight.DrawGradient(gradientRect);
             if (interactive)
             {
@@ -754,7 +848,8 @@ namespace HSKKebabLimits
         {
             const float checkboxSize = 24f;
             const float checkboxGap = 4f;
-            bool interactive = EnableHardEjection;
+            bool dependencyAvailable = !LimitsAvailability.IsBlocked(LimitsAvailability.Place);
+            bool interactive = EnableHardEjection && dependencyAvailable;
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
             BlockDisabledSettingsRowInput(row, !interactive);
 
@@ -768,7 +863,9 @@ namespace HSKKebabLimits
             Rect fieldRect = CalcNumericFieldRect(row, controlsHost.RightHalf());
             Rect labelRect = new Rect(row.x, row.y, Mathf.Max(0f, fieldRect.x - row.x - checkboxGap), row.height);
             string label = "DelayHardEjectionAfterLimitChange".Translate();
-            string tooltip = "DelayHardEjectionAfterLimitChangeTooltip".Translate();
+            string tooltip = MissingDependencyTip(
+                "DelayHardEjectionAfterLimitChangeTooltip".Translate(),
+                dependencyAvailable);
 
             if (!tooltip.NullOrEmpty())
             {
@@ -843,7 +940,9 @@ namespace HSKKebabLimits
             const float digitGap = 4f;
             const int controlCount = 3;
             float controlsWidth = controlCount * controlSize + (controlCount - 1) * digitGap;
-            bool interactive = AddFilterDisplaySettings;
+            bool dependencyAvailable = !LimitsAvailability.IsBlocked(LimitsAvailability.FilterDisplay)
+                && !LimitsAvailability.IsBlocked(LimitsAvailability.ExpandCategories);
+            bool interactive = AddFilterDisplaySettings && dependencyAvailable;
 
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
             BlockDisabledSettingsRowInput(row, !interactive);
@@ -851,12 +950,16 @@ namespace HSKKebabLimits
             Rect labelRect = row;
             labelRect.width = Mathf.Max(0f, row.width - controlsWidth);
             DrawSettingsRowLabel(labelRect, "ExpandFilterCategories".Translate(),
+                dependencyAvailable ? null : "KebabLimits.MissingDependenciesTooltip".Translate(),
                 underlineNonDefault: ExpandFilterCategoriesMode != 0);
 
             float controlY = row.y + (row.height - controlSize) / 2f;
             float x = row.xMax - controlSize;
             Rect crossRect = new Rect(x, controlY, controlSize, controlSize);
-            TooltipHandler.TipRegion(crossRect, "ExpandFilterCategoriesModeDisabledTooltip".Translate());
+            if (dependencyAvailable)
+            {
+                TooltipHandler.TipRegion(crossRect, "ExpandFilterCategoriesModeDisabledTooltip".Translate());
+            }
             if (interactive && Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
             {
                 SetExpandFilterCategoriesMode(0);
@@ -867,9 +970,15 @@ namespace HSKKebabLimits
             }
 
             x -= digitGap + controlSize;
-            DrawExpandFilterCategoriesDigit(new Rect(x, controlY, controlSize, controlSize), 2, interactive);
+            DrawExpandFilterCategoriesDigit(new Rect(x, controlY, controlSize, controlSize), 2, interactive,
+                dependencyAvailable);
             x -= digitGap + controlSize;
-            DrawExpandFilterCategoriesDigit(new Rect(x, controlY, controlSize, controlSize), 1, interactive);
+            DrawExpandFilterCategoriesDigit(new Rect(x, controlY, controlSize, controlSize), 1, interactive,
+                dependencyAvailable);
+            if (!dependencyAvailable)
+            {
+                TooltipHandler.TipRegion(row, "KebabLimits.MissingDependenciesTooltip".Translate());
+            }
 
             DrawDisabledSettingsRowVeil(row, !interactive);
             listing.Gap(SettingsCheckboxRowGap);
@@ -880,12 +989,15 @@ namespace HSKKebabLimits
         ///
         /// Рисует одну кнопку-цифру пресета режима разворачивания категорий.
         /// </summary>
-        private void DrawExpandFilterCategoriesDigit(Rect rect, int mode, bool interactive)
+        private void DrawExpandFilterCategoriesDigit(Rect rect, int mode, bool interactive, bool showModeTooltip)
         {
             string tooltipKey = mode == 1
                 ? "ExpandFilterCategoriesModePerStorageTooltip"
                 : "ExpandFilterCategoriesModeGlobalTooltip";
-            TooltipHandler.TipRegion(rect, tooltipKey.Translate());
+            if (showModeTooltip)
+            {
+                TooltipHandler.TipRegion(rect, tooltipKey.Translate());
+            }
             if (interactive && Mouse.IsOver(rect))
             {
                 Widgets.DrawHighlight(rect);
@@ -929,16 +1041,21 @@ namespace HSKKebabLimits
         {
             const float controlSize = 24f;
             const float digitGap = 4f;
-            bool interactive = EnableHardEjection;
+            bool dependencyAvailable = !LimitsAvailability.IsBlocked(LimitsAvailability.Place);
+            bool interactive = EnableHardEjection && dependencyAvailable;
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
             BlockDisabledSettingsRowInput(row, !interactive);
             DrawSettingsRowLabel(row, "ZoneWideCascadeEject".Translate(),
+                dependencyAvailable ? null : "KebabLimits.MissingDependenciesTooltip".Translate(),
                 underlineNonDefault: ZoneWideCascadeEjectMode != 0);
 
             float controlY = row.y + (row.height - controlSize) / 2f;
             float x = row.xMax - controlSize;
             Rect crossRect = new Rect(x, controlY, controlSize, controlSize);
-            TooltipHandler.TipRegion(crossRect, "ZoneWideCascadeEjectDisabledTooltip".Translate());
+            if (dependencyAvailable)
+            {
+                TooltipHandler.TipRegion(crossRect, "ZoneWideCascadeEjectDisabledTooltip".Translate());
+            }
             if (interactive && Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
             {
                 SetZoneWideCascadeEjectMode(0);
@@ -952,8 +1069,13 @@ namespace HSKKebabLimits
             for (int mode = 3; mode >= 1; mode--)
             {
                 Rect digitRect = new Rect(x, controlY, controlSize, controlSize);
-                DrawZoneWideCascadeEjectDigit(digitRect, mode, interactive);
+                DrawZoneWideCascadeEjectDigit(digitRect, mode, interactive, dependencyAvailable);
                 x -= digitGap + controlSize;
+            }
+
+            if (!dependencyAvailable)
+            {
+                TooltipHandler.TipRegion(row, "KebabLimits.MissingDependenciesTooltip".Translate());
             }
 
             DrawDisabledSettingsRowVeil(row, !interactive);
@@ -963,10 +1085,13 @@ namespace HSKKebabLimits
         /// <summary>
         /// Draws one selectable digit button for a cascade eject mode.
         /// </summary>
-        private void DrawZoneWideCascadeEjectDigit(Rect rect, int mode, bool interactive)
+        private void DrawZoneWideCascadeEjectDigit(Rect rect, int mode, bool interactive, bool showModeTooltip)
         {
             string tooltipKey = "ZoneWideCascadeEjectMode" + mode + "Tooltip";
-            TooltipHandler.TipRegion(rect, tooltipKey.Translate());
+            if (showModeTooltip)
+            {
+                TooltipHandler.TipRegion(rect, tooltipKey.Translate());
+            }
             if (interactive && Mouse.IsOver(rect))
             {
                 Widgets.DrawHighlight(rect);
@@ -1010,26 +1135,34 @@ namespace HSKKebabLimits
         {
             const float controlSize = 24f;
             const float digitGap = 4f;
+            bool available = !LimitsAvailability.IsBlocked(LimitsAvailability.Place);
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !available);
             DrawSettingsRowLabel(row, "DelayedZoneOverflowEject".Translate(),
+                available ? null : "KebabLimits.MissingDependenciesTooltip".Translate(),
                 underlineNonDefault: DelayedZoneEjectHours != DefaultDelayedZoneEjectHours);
 
             float controlY = row.y + (row.height - controlSize) / 2f;
             float x = row.xMax - controlSize;
             Rect crossRect = new Rect(x, controlY, controlSize, controlSize);
             TooltipHandler.TipRegion(crossRect, "DelayedZoneOverflowEjectDisabledTooltip".Translate());
-            if (Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
+            if (available && Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
             {
                 SetDelayedZoneEjectHours(0);
             }
+            else if (!available)
+            {
+                GUI.DrawTexture(crossRect, Widgets.CheckboxOffTex);
+            }
 
             x -= digitGap + controlSize;
-            DrawDelayedZoneEjectDigit(new Rect(x, controlY, controlSize, controlSize), 12);
+            DrawDelayedZoneEjectDigit(new Rect(x, controlY, controlSize, controlSize), 12, available);
             x -= digitGap + controlSize;
-            DrawDelayedZoneEjectDigit(new Rect(x, controlY, controlSize, controlSize), 6);
+            DrawDelayedZoneEjectDigit(new Rect(x, controlY, controlSize, controlSize), 6, available);
             x -= digitGap + controlSize;
-            DrawDelayedZoneEjectDigit(new Rect(x, controlY, controlSize, controlSize), 1);
+            DrawDelayedZoneEjectDigit(new Rect(x, controlY, controlSize, controlSize), 1, available);
 
+            DrawDisabledSettingsRowVeil(row, !available);
             listing.Gap(SettingsCheckboxRowGap);
         }
 
@@ -1040,15 +1173,19 @@ namespace HSKKebabLimits
         /// Рисует одну кнопку часов для отложенного сброса. Шрифт уменьшается, пока цифры
         /// не помещаются в квадрат.
         /// </summary>
-        private void DrawDelayedZoneEjectDigit(Rect rect, int hours)
+        private void DrawDelayedZoneEjectDigit(Rect rect, int hours, bool available)
         {
-            TooltipHandler.TipRegion(rect, "DelayedZoneOverflowEjectModeTooltip".Translate(hours.Named("HOURS")));
-            if (Mouse.IsOver(rect))
+            if (available)
+            {
+                TooltipHandler.TipRegion(rect, "DelayedZoneOverflowEjectModeTooltip".Translate(hours.Named("HOURS")));
+            }
+
+            if (available && Mouse.IsOver(rect))
             {
                 Widgets.DrawHighlight(rect);
             }
 
-            if (Widgets.ButtonInvisible(rect))
+            if (available && Widgets.ButtonInvisible(rect))
             {
                 SetDelayedZoneEjectHours(hours);
             }
@@ -1123,19 +1260,21 @@ namespace HSKKebabLimits
             const int controlCount = 3;
             float controlsWidth = controlCount * controlSize + (controlCount - 1) * digitGap;
 
+            bool available = !LimitsAvailability.IsBlocked(LimitsAvailability.Store);
             Rect row = listing.GetRect(SettingsCheckboxRowHeight);
+            BlockDisabledSettingsRowInput(row, !available);
             Rect labelRect = row;
             labelRect.width = Mathf.Max(0f, row.width - controlsWidth);
 
-            string multistackTooltip = "MultistackInfo".Translate();
+            string multistackTooltip = MissingDependencyTip("MultistackInfo".Translate(), available);
             if (!multistackTooltip.NullOrEmpty())
             {
-                if (Mouse.IsOver(labelRect))
+                if (available && Mouse.IsOver(labelRect))
                 {
                     Widgets.DrawHighlight(labelRect);
                 }
 
-                TooltipHandler.TipRegion(labelRect, multistackTooltip);
+                TooltipHandler.TipRegion(available ? labelRect : row, multistackTooltip);
             }
 
             DrawSettingsRowLabel(labelRect, "Multistack".Translate(),
@@ -1145,34 +1284,43 @@ namespace HSKKebabLimits
             float x = row.xMax - controlSize;
             Rect crossRect = new Rect(x, controlY, controlSize, controlSize);
             TooltipHandler.TipRegion(crossRect, "MultistackModeDisabledTooltip".Translate());
-            if (Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
+            if (available && Widgets.ButtonImage(crossRect, Widgets.CheckboxOffTex))
             {
                 SetGlobalMultistackMode(0);
             }
+            else if (!available)
+            {
+                GUI.DrawTexture(crossRect, Widgets.CheckboxOffTex);
+            }
 
             x -= digitGap + controlSize;
-            DrawMultistackModeDigit(new Rect(x, controlY, controlSize, controlSize), 2);
+            DrawMultistackModeDigit(new Rect(x, controlY, controlSize, controlSize), 2, available);
             x -= digitGap + controlSize;
-            DrawMultistackModeDigit(new Rect(x, controlY, controlSize, controlSize), 1);
+            DrawMultistackModeDigit(new Rect(x, controlY, controlSize, controlSize), 1, available);
 
+            DrawDisabledSettingsRowVeil(row, !available);
             listing.Gap(SettingsCheckboxRowGap);
         }
 
         /// <summary>
         /// Draws one selectable digit button for a multistack mode preset.
         /// </summary>
-        private void DrawMultistackModeDigit(Rect rect, int mode)
+        private void DrawMultistackModeDigit(Rect rect, int mode, bool available)
         {
             string tooltipKey = mode == 1
                 ? "MultistackModeEnabledGlobalTooltip"
                 : "MultistackModeEnabledPerStorageTooltip";
-            TooltipHandler.TipRegion(rect, tooltipKey.Translate());
-            if (Mouse.IsOver(rect))
+            if (available)
+            {
+                TooltipHandler.TipRegion(rect, tooltipKey.Translate());
+            }
+
+            if (available && Mouse.IsOver(rect))
             {
                 Widgets.DrawHighlight(rect);
             }
 
-            if (Widgets.ButtonInvisible(rect))
+            if (available && Widgets.ButtonInvisible(rect))
             {
                 SetGlobalMultistackMode(mode);
             }
@@ -1224,11 +1372,13 @@ namespace HSKKebabLimits
             DrawResetSettingsButton(listing, viewWidth);
             DrawSettingsCheckboxRow(listing, "EnableLogging".Translate(), ref EnableLogging, defaultValue: false);
             DrawSettingsRowSeparator(listing, viewWidth);
-            DrawSettingsCheckboxRow(listing, "PercentageMode".Translate(), ref PercentageMode, defaultValue: false);
+            DrawSettingsCheckboxRow(listing, "PercentageMode".Translate(), ref PercentageMode, defaultValue: false,
+                dependencyAvailable: !LimitsAvailability.IsBlocked(LimitsAvailability.Slider));
             DrawSettingsRowSeparator(listing, viewWidth);
             bool similarBefore = GlobalSimilarStackEnabled;
             DrawSettingsCheckboxRow(listing, "EnableSimilarStackLimits".Translate(), ref GlobalSimilarStackEnabled,
-                defaultValue: true, "EnableSimilarStackLimitsTooltip".Translate());
+                defaultValue: true, "EnableSimilarStackLimitsTooltip".Translate(),
+                !LimitsAvailability.IsBlocked(LimitsAvailability.Store));
             if (!similarBefore && GlobalSimilarStackEnabled)
             {
                 // Profiles with SimilarStackCountRaw=-1 become storage-wide again - clamp overrides.
@@ -1238,7 +1388,8 @@ namespace HSKKebabLimits
             DrawSettingsRowSeparator(listing, viewWidth);
             bool negativeCacheBefore = EnableNegativeSolveCache;
             DrawSettingsCheckboxRow(listing, "EnableNegativeSolveCache".Translate(), ref EnableNegativeSolveCache,
-                defaultValue: true, "EnableNegativeSolveCacheTooltip".Translate());
+                defaultValue: true, "EnableNegativeSolveCacheTooltip".Translate(),
+                !LimitsAvailability.IsBlocked(LimitsAvailability.Store));
             if (negativeCacheBefore && !EnableNegativeSolveCache)
             {
                 CapacityQueryCache.ClearAllNegative();
@@ -1246,7 +1397,8 @@ namespace HSKKebabLimits
 
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawSettingsCheckboxRow(listing, "EnableHardEjection".Translate(), ref EnableHardEjection,
-                defaultValue: false, "EnableHardEjectionTooltip".Translate());
+                defaultValue: false, "EnableHardEjectionTooltip".Translate(),
+                !LimitsAvailability.IsBlocked(LimitsAvailability.Place));
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawDelayHardEjectionRow(listing);
             DrawSettingsRowSeparator(listing, viewWidth);
@@ -1257,13 +1409,15 @@ namespace HSKKebabLimits
             DrawMultistackModeRow(listing);
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawSettingsCheckboxRow(listing, "AddFilterDisplaySettings".Translate(), ref AddFilterDisplaySettings,
-                defaultValue: false, "AddFilterDisplaySettingsTooltip".Translate());
+                defaultValue: false, "AddFilterDisplaySettingsTooltip".Translate(),
+                !LimitsAvailability.IsBlocked(LimitsAvailability.FilterDisplay));
             DrawSettingsRowSeparator(listing, viewWidth);
             DrawExpandFilterCategoriesRow(listing);
             DrawSettingsRowSeparator(listing, viewWidth);
             bool allowAboveBefore = AllowPerItemAboveSlider;
             DrawSettingsCheckboxRow(listing, "AllowPerItemAboveSlider".Translate(), ref AllowPerItemAboveSlider,
-                defaultValue: false, "AllowPerItemAboveSliderTooltip".Translate());
+                defaultValue: false, "AllowPerItemAboveSliderTooltip".Translate(),
+                !LimitsAvailability.IsBlocked(LimitsAvailability.PerItem));
             if (allowAboveBefore && !AllowPerItemAboveSlider)
             {
                 StockpileProfileStore.ClampAllProfilesToModeCap();
@@ -1278,14 +1432,22 @@ namespace HSKKebabLimits
             DrawSettingsRowSeparator(listing, viewWidth);
             listing.Gap(15f);
 
+            bool sliderAvailable = !LimitsAvailability.IsBlocked(LimitsAvailability.Slider);
             listing.Label("DisplayLogFactorExample".Translate());
             FloatRange previewRange = DisplayLogExample;
             Rect previewRect = listing.GetRect(28f);
+            BlockDisabledSettingsRowInput(previewRect, !sliderAvailable);
+            if (!sliderAvailable)
+            {
+                TooltipHandler.TipRegion(previewRect, "KebabLimits.MissingDependenciesTooltip".Translate());
+            }
+
             Widgets.FloatRange(previewRect, 182356235, ref previewRange, 0f, 1f,
                 StockpileFilterSliderRow.FormatLimitLabel(previewRange.min, previewRange.max), ToStringStyle.Integer, 0f,
                 GameFont.Tiny, Color.white);
             LimitHighlight.DrawRangeBarOverlay(previewRect, previewRange);
-            DisplayLogExample = previewRange;
+            DisplayLogExample = sliderAvailable ? previewRange : DisplayLogExample;
+            DrawDisabledSettingsRowVeil(previewRect, !sliderAvailable);
             Text.Font = GameFont.Tiny;
             Text.Anchor = TextAnchor.UpperCenter;
             GUI.color = Color.white;
@@ -1295,20 +1457,41 @@ namespace HSKKebabLimits
             Text.Font = GameFont.Small;
 
             DrawSettingsRowSeparator(listing, viewWidth);
-            DrawModifiedHighlightColorHeader(listing);
-            DrawHighlightColorSlider(listing, ref HighlightColorPosition, HighlightColor, interactive: true);
+            DrawModifiedHighlightColorHeader(listing, sliderAvailable);
+            DrawHighlightColorSlider(listing, ref HighlightColorPosition, HighlightColor, sliderAvailable,
+                missingDependency: !sliderAvailable);
             listing.Gap((SettingsCheckboxRowHeight - Text.LineHeight) * 0.5f);
             DrawSettingsRowSeparator(listing, viewWidth);
-            bool raisedColorInteractive = AllowPerItemAboveSlider && SeparateRaisedLimitHighlightColor;
+            bool raisedColorInteractive = sliderAvailable
+                && !LimitsAvailability.IsBlocked(LimitsAvailability.PerItem)
+                && AllowPerItemAboveSlider
+                && SeparateRaisedLimitHighlightColor;
             DrawRaisedLimitHighlightColorHeader(listing, raisedColorInteractive);
+            bool raisedColorMissing = !sliderAvailable
+                || LimitsAvailability.IsBlocked(LimitsAvailability.PerItem);
             DrawHighlightColorSlider(listing, ref RaisedLimitHighlightColorPosition,
-                LimitHighlight.SampleColor(RaisedLimitHighlightColorPosition), raisedColorInteractive);
+                LimitHighlight.SampleColor(RaisedLimitHighlightColorPosition), raisedColorInteractive,
+                missingDependency: raisedColorMissing);
 
             listing.Gap(24f);
-            if (Widgets.ButtonText(listing.GetRect(28f), "PressIfStackSizeChangedRuntime".Translate()))
+            Rect refreshRect = listing.GetRect(28f);
+            BlockDisabledSettingsRowInput(refreshRect, !sliderAvailable);
+            if (!sliderAvailable)
+            {
+                TooltipHandler.TipRegion(refreshRect, "KebabLimits.MissingDependenciesTooltip".Translate());
+            }
+
+            if (sliderAvailable && Widgets.ButtonText(refreshRect, "PressIfStackSizeChangedRuntime".Translate()))
             {
                 LogarithmicStackScale.InvalidateAndRefresh();
             }
+            else if (!sliderAvailable)
+            {
+                Widgets.ButtonText(refreshRect, "PressIfStackSizeChangedRuntime".Translate(),
+                    drawBackground: true, doMouseoverSound: false, active: false);
+            }
+
+            DrawDisabledSettingsRowVeil(refreshRect, !sliderAvailable);
 
             listing.End();
             Widgets.EndScrollView();

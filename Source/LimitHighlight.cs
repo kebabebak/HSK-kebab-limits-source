@@ -40,7 +40,9 @@ namespace HSKKebabLimits
         };
 
         /// <summary>
-        /// Returns whether the limit range differs from the full 0–100% stockpile default.
+        /// Returns whether the limit range differs from the full 0-100% stockpile default.
+        ///
+        /// Возвращает, отличается ли диапазон лимита от полного склада 0-100% по умолчанию.
         /// </summary>
         public static bool IsCustomLimit(FloatRange range)
         {

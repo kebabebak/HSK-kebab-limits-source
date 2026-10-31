@@ -22,14 +22,7 @@ namespace HSKKebabLimits
             MethodInfo drawMentalBreakFilterConfig = AccessTools.Method(typeof(Verse.ThingFilterUI),
                 "DrawMentalBreakFilterConfig",
                 new[] { typeof(float).MakeByRefType(), typeof(float), typeof(ThingFilter) });
-            if (drawMentalBreakFilterConfig != null)
-            {
-                return true;
-            }
-
-            Log.Error(
-                "[HSK kebab limits] DrawMentalBreakFilterConfig not found; stack limit UI hook skipped.");
-            return false;
+            return drawMentalBreakFilterConfig != null;
         }
 
         /// <summary>

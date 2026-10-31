@@ -26,6 +26,7 @@ namespace HSKKebabLimits
             : base(content)
         {
             settings = GetSettings<KebabLimitsModSettings>();
+            LimitsAvailability.Probe();
             try
             {
                 SettingsAudit.Publish();
@@ -67,7 +68,18 @@ namespace HSKKebabLimits
 
             try
             {
-                HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
+                foreach (Type type in AccessTools.GetTypesFromAssembly(Assembly.GetExecutingAssembly()))
+                {
+                    try
+                    {
+                        HarmonyInstance.CreateClassProcessor(type).Patch();
+                    }
+                    catch (Exception typeEx)
+                    {
+                        Log.Warning("[HSK kebab limits] " + type.Name + " skipped: " + typeEx.Message);
+                    }
+                }
+
                 KebabLimitsLog.Message("[HSK kebab limits] Harmony patching completed.");
             }
             catch (Exception ex)

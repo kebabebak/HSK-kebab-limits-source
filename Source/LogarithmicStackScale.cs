@@ -5,9 +5,9 @@ using Verse;
 namespace HSKKebabLimits
 {
     /// <summary>
-    /// Non-linear mapping between stockpile slider positions (0–1) and absolute stack counts.
+    /// Non-linear mapping between stockpile slider positions (0-1) and absolute stack counts.
     ///
-    /// Нелинейное соответствие между положением ползунка склада (0–1) и абсолютным числом предметов.
+    /// Нелинейное соответствие между положением ползунка склада (0-1) и абсолютным числом предметов.
     /// </summary>
     internal static class LogarithmicStackScale
     {
